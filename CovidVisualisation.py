@@ -36,29 +36,49 @@ print(f'country_daily{country_daily_df.info()}')
 print(f'country_latest: {country_latest_df.info()}')
 print(f'daily_total: {daily_total_df.info()}')
 
-# %%
+#%%
+# Maps cases and deaths (total, last week, last month, per 100000 population)
+
+#%%
+#Bar graphs
+# weekly global cases/deaths (Cumulative and new cases/deaths) (use daily_total)
+# continent/Country breakdown - same graphs, maybe line plots?
+# racing bar graph of top 10 (20?) nations, cases/deaths
+
 '''Worldwide total confirmed cases and deaths'''
-# Remove null values from Province_State column of covid_cleaned_df
-covid_cleaned_df['Province_State'] = covid_cleaned_df['Province_State'].fillna('')
-df = covid_cleaned_df[covid_cleaned_df['Country_Region'] == 'Australia']
-bar = px.bar(df, x='Date'  # try settin   to Province_State for animation
-             , y='Confirmed'
-             , color='Provin ce_State'
+#convert date colum to datetime format
+country_daily_df['Date'] = pd.to_datetime(country_daily_df['Date'],infer_datetime_format=True)
+# #create new df to use as basis for bar plots, sort by Date
+barplots_df = country_daily_df.sort_values('Date', ignore_index=True)
+
+# group data by week
+barplots_df = barplots_df.groupby(by=[pd.Grouper(key='Date', axis=0, freq='W'),'Continent']) \
+    [['Date','Continent','Confirmed','Deaths','New_cases','New_deaths']].agg(
+    {'Confirmed':'max', # max value is No of confirmed cases at the end of the week
+     'Deaths':'max', # max value is No of deaths  at the end of the week
+     'New_cases':'sum', # sum number of new cases each day throughout the week
+     'New_deaths':'sum'} # sum number of new deaths each day throughout the week
+).reset_index() # flatten multi-index for px
+
+
+
+#%%
+
+bar = px.bar(barplots_df
+             , x='Date'  # using date, but try setting to Country or Continent for animation
+             , y='New_cases'
+             , color='Continent'
              , opacity=0.9
-             , orientation=
-             'v'
+             , orientation='v'
              , barmode='relative'
-             , title='Confirmed Covid-19 cases in Australia'
+             , title='Confirmed Covid-19 cases by week'
              , template='plotly_dark'
              # ,animation_frame='Date', # need to sort the Date column properly for this to work
              # ,range_y=[0,750000]
              )
-
 bar.show()
 
 '''
-
-
 
 Also look at Racing bargraph animation, could look cool
 (Not necessary for function, but maybe also look into prettify or something similar for pycharm
@@ -67,12 +87,12 @@ Also look at Racing bargraph animation, could look cool
 #%%
 
 
-df = pd.read_csv('H:/Covid19Dashboard/daily_total.csv')
-# can convert str date cols to datetime
-df['Date'] = pd.to_datetime(df['Date'], infer_datetime_format=True)
-# group by week
-df = df.groupby(pd.Grouper(key='Date', axis=0, freq='W'))['Confirmed','Deaths','New_cases','Deaths_per_100'].agg(
-    {'Confirmed':'max','Deaths':'max','New_cases':'sum','Deaths_per_100':'mean'})
-print(df.head(10))
+# df = pd.read_csv('H:/Covid19Dashboard/daily_total.csv')
+# # can convert str date cols to datetime
+# df['Date'] = pd.to_datetime(df['Date'], infer_datetime_format=True)
+# # group by week
+# df = df.groupby(pd.Grouper(key='Date', axis=0, freq='W'))['Confirmed','Deaths','New_cases','Deaths_per_100'].agg(
+#     {'Confirmed':'max','Deaths':'max','New_cases':'sum','Deaths_per_100':'mean'})
+# print(df.head(10))
 
 #%%
