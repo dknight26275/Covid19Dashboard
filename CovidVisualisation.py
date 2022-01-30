@@ -17,12 +17,16 @@ import folium
 
 import pandas as pd
 import numpy as np
+from datetime import datetime
 # import matplotlib.pylot as plt
 
 import math
 import random
 from datetime import timedelta
 import os
+
+dths = '#A32323' # colour for styling deaths
+conf = '#115806' # colur for styling confirmed cases
 
 # %%
 # load cleaned/processed data
@@ -40,59 +44,191 @@ print(f'daily_total: {daily_total_df.info()}')
 # Maps cases and deaths (total, last week, last month, per 100000 population)
 
 #%%
-#Bar graphs
-# weekly global cases/deaths (Cumulative and new cases/deaths) (use daily_total)
-# continent/Country breakdown - same graphs, maybe line plots?
-# racing bar graph of top 10 (20?) nations, cases/deaths
-
-'''Worldwide total confirmed cases and deaths'''
-#convert date colum to datetime format
-country_daily_df['Date'] = pd.to_datetime(country_daily_df['Date'],infer_datetime_format=True)
-# #create new df to use as basis for bar plots, sort by Date
-barplots_df = country_daily_df.sort_values('Date', ignore_index=True)
+'''Bar graphs
+weekly global cases/deaths (Cumulative and new cases/deaths) (use daily_total)
+continent/Country breakdown - same graphs, maybe line plots?
+racing bar graph of top 10 (20?) nations, cases/deaths'''
+#%%
+''' Create df for Barplots of Global total confirmed cases and deaths'''
+# create copy of daily_totals
+global_barplots_df = daily_total_df.copy()
+#rename columns for better display
+global_barplots_df = global_barplots_df.rename(columns={'Confirmed':'Cumulative cases',
+                                                        'Deaths':'Total Deaths',
+                                                        'Deaths_per_100':'Deaths/100 cases',
+                                                        'No_countries': 'Number of Countries'})
+# convert date colum to datetime format
+global_barplots_df['Date'] = pd.to_datetime(global_barplots_df['Date'], infer_datetime_format=True)
+# sort by Date
+global_barplots_df = global_barplots_df.sort_values('Date', ignore_index=True)
 
 # group data by week
-barplots_df = barplots_df.groupby(by=[pd.Grouper(key='Date', axis=0, freq='W'),'Continent']) \
-    [['Date','Continent','Confirmed','Deaths','New_cases','New_deaths']].agg(
-    {'Confirmed':'max', # max value is No of confirmed cases at the end of the week
-     'Deaths':'max', # max value is No of deaths  at the end of the week
-     'New_cases':'sum', # sum number of new cases each day throughout the week
-     'New_deaths':'sum'} # sum number of new deaths each day throughout the week
+global_barplots_weekly_df = global_barplots_df.groupby(by=[pd.Grouper(key='Date', axis=0, freq='W')]) \
+    [['Date','Cumulative cases','Total Deaths','New_cases','New_deaths','Deaths/100 cases','Number of Countries']].agg(
+    {'Cumulative cases':'max', # No of confirmed cases at the end of the week
+     'Total Deaths':'max', # No of deaths  at the end of the week
+     'New_cases':'sum', # number of new cases each day throughout the week
+     'New_deaths':'sum', # number of new deaths each day throughout the week
+     'Deaths/100 cases':'mean', # mean number of deaths per 100000 each day throughout the week
+     'Number of Countries':'max'}  # No of countries with reported cases
 ).reset_index() # flatten multi-index for px
 
-
+#%%
+''' Create df for Barplots of confirmed cases and deaths grouped by continent/country'''
 
 #%%
-
-bar = px.bar(barplots_df
-             , x='Date'  # using date, but try setting to Country or Continent for animation
-             , y='New_cases'
-             , color='Continent'
+# function to style bar plots
+def barplot(df,x,y,hoverdata=[],title=None,xlabel=None,ylabel=None,color=None):
+    bar = px.bar(df
+             , x=x
+             , y=y
              , opacity=0.9
              , orientation='v'
              , barmode='relative'
-             , title='Confirmed Covid-19 cases by week'
-             , template='plotly_dark'
-             # ,animation_frame='Date', # need to sort the Date column properly for this to work
-             # ,range_y=[0,750000]
-             )
-bar.show()
+             , title=title
+             , hover_data=hoverdata
+             , template='seaborn'
+             ,labels={x:xlabel,
+                      y:ylabel})
 
-'''
-
-Also look at Racing bargraph animation, could look cool
-(Not necessary for function, but maybe also look into prettify or something similar for pycharm
-'''
-
+    bar.update_layout(font={'family':'arial', 'size':16}, )
+    bar.update_traces(marker_color=color)
+    bar.update_yaxes(showgrid=False, tickfont={'family':'arial', 'size':14})
+    bar.update_xaxes(showgrid=False, tickfont={'family':'arial', 'size':14})
+    return bar
+    # bar.show()
+print('function created')
 #%%
-
-
-# df = pd.read_csv('H:/Covid19Dashboard/daily_total.csv')
-# # can convert str date cols to datetime
-# df['Date'] = pd.to_datetime(df['Date'], infer_datetime_format=True)
-# # group by week
-# df = df.groupby(pd.Grouper(key='Date', axis=0, freq='W'))['Confirmed','Deaths','New_cases','Deaths_per_100'].agg(
-#     {'Confirmed':'max','Deaths':'max','New_cases':'sum','Deaths_per_100':'mean'})
-# print(df.head(10))
-
+weekly_Cumulativecases_plot = barplot(df=global_barplots_weekly_df,
+                                      x='Date',
+                                      y='Cumulative cases',
+                                      hoverdata=['New_cases','Number of Countries'],
+                                      title='Global Cumulative Covid-19 cases',
+                                      xlabel='Date',
+                                      ylabel='Total Covid-19 cases',
+                                      color=conf)
+weekly_Newcases_plot = barplot(df=global_barplots_weekly_df,
+                               x='Date',
+                               y='New_cases',
+                               hoverdata=['Cumulative cases', 'Number of Countries'],
+                               title='Global Daily Covid-19 cases',
+                               xlabel='Date',
+                               ylabel='Weekly cases',
+                               color=conf)
+weekly_Cumulativedeaths_plot = barplot(df=global_barplots_weekly_df,
+                                      x='Date',
+                                      y='Total Deaths',
+                                      hoverdata=['New_deaths','Deaths/100 cases'],
+                                      title='Global Covid-19 Deaths',
+                                      xlabel='Date',
+                                      ylabel='Total Covid-19 Deaths',
+                                      color=dths)
+weekly_Newdeaths_plot = barplot(df=global_barplots_weekly_df,
+                                      x='Date',
+                                      y='New_deaths',
+                                      hoverdata=['Total Deaths','Deaths/100 cases'],
+                                      title='Global Weekly Covid-19 Deaths',
+                                      xlabel='Date',
+                                      ylabel='Weekly Covid-19 Deaths',
+                                      color=dths)
+weekly_Cumulativecases_plot.show()
 #%%
+'''Racing Bar chart - display horizontal bar charts of top 10(?) countries (one for confirmed cases, one for deaths
+Animate the bar chart with each frame displaying data from one month, starting Jan 2020'''
+# use country_daily as base for racing bar chart df
+racing_bar_df = country_daily_df.copy()
+# convert Date column to datetype for grouping
+# racing_bar_df['Date'] = pd.to_datetime(racing_bar_df['Date'],infer_datetime_format=True)
+# group by country and Month, only need continent, confirmed and deaths column
+racing_bar_df = racing_bar_df.groupby(by=['Date','Country_Region', ])[['Country_Region',   # pd.Grouper(key='Date', axis=0, freq='M')
+'Continent', 'Confirmed','Deaths']].agg({'Continent':'first',
+                                        'Confirmed':'max',
+                                        'Deaths':'max'}).reset_index()
+
+# calculate max values to set range for X-axis
+conf_upper_range = (racing_bar_df['Confirmed'].max())*1.1
+dths_upper_range = (racing_bar_df['Deaths'].max())*1.1
+# create dictionary to hold data for animation, each key-value pair will be data for one frame of the animated bar chart
+
+# create list of unique dates  - each frame of the animation will be based on data from a single month
+dates =[]
+for date in racing_bar_df['Date'].unique():
+    dates.append(date)
+
+# create list for dictionary keys
+dict_keys = []
+for i in range(len(dates)):
+    dict_keys.append('frame'+str(i+1))
+
+# create dictionary for confirmed cases
+confirmed_dict = {}
+for date,key in zip(dates, dict_keys):
+    df = racing_bar_df[racing_bar_df['Date']==date] # get all data for selected month
+    df = df.nlargest(20,columns=['Confirmed'])
+    df = df.sort_values(by=['Date','Confirmed'])
+    confirmed_dict[key] = df[['Date','Country_Region','Continent','Confirmed']]
+
+racing_bar = go.Figure(
+    data = [
+        go.Bar(
+            x=confirmed_dict['frame1']['Confirmed'],
+            y=confirmed_dict['frame1']['Country_Region'],
+            orientation='h',
+            text=confirmed_dict['frame1'][['Country_Region','Confirmed']],
+            textfont={'family':'arial','size':18},
+            textposition='inside',
+            insidetextanchor='middle',
+            width=0.9
+        )
+    ],
+    layout=go.Layout(
+        xaxis=dict(range=[0, conf_upper_range], autorange=True, title=dict(text='Covid-19 cases',font=dict(size=18))),
+        yaxis=dict(range=[-0.5, 20.5], autorange=True,tickfont=dict(size=14)),
+        title=dict(text='Covid_19 cases by Country',font=dict(size=28),x=0.5,xanchor='center'),
+        # Add button
+        updatemenus=[dict(
+            type="buttons",
+            buttons=[dict(label="Play",
+                          method="animate",
+                          # https://github.com/plotly/plotly.js/blob/master/src/plots/animation_attributes.js
+                          args=[None,
+                                {"frame": {"duration": 100, "redraw": True},
+                                 "transition": {"duration": 25,
+                                                "easing": "linear"}}]
+            )]
+        )]
+    ),
+    frames=[
+        go.Frame(
+            data=[
+                go.Bar(x=value['Confirmed'], y=value['Country_Region'],
+                       orientation='h', text=value['Confirmed'])
+            ],
+            layout=go.Layout(
+                xaxis=dict(range=[0, conf_upper_range], autorange=True),
+                yaxis=dict(range=[-0.5, 20.5], autorange=True, tickfont=dict(size=14)),
+                title=dict(text='Covid-19 cases by Country: ' + str(value['Date'].values[0]),
+                           font=dict(size=28))
+            )
+        )
+        for key, value in confirmed_dict.items()
+    ]
+)
+pio.show(racing_bar)
+# + str(value['year'].values[0])
+#%%
+# now = datetime.now()
+# print(type(now))
+# print(type(dates[0]))
+# date = dates[0].astype(datetime)
+# print(type(date))
+# print(date)
+# # year = now.strftime()
+#
+# ddf = country_daily_df.copy()
+# date = ddf['Date'][0]
+# print(date, type(date))
+# ddf['Date'] = pd.to_datetime(ddf['Date'],infer_datetime_format=True)
+# print(ddf.info())
+# date = ddf['Date'][0]
+# print(date, type(date))
