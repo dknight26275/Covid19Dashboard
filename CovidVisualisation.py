@@ -167,6 +167,7 @@ for date,key in zip(dates, dict_keys):
     df = df.nlargest(20,columns=['Confirmed'])
     df = df.sort_values(by=['Date','Confirmed'])
     confirmed_dict[key] = df[['Date','Country_Region','Continent','Confirmed']]
+#%%
 
 racing_bar = go.Figure(
     data = [
@@ -182,21 +183,22 @@ racing_bar = go.Figure(
         )
     ],
     layout=go.Layout(
-        xaxis=dict(range=[0, conf_upper_range], autorange=True, title=dict(text='Covid-19 cases',font=dict(size=18))),
-        yaxis=dict(range=[-0.5, 20.5], autorange=True,tickfont=dict(size=14)),
-        title=dict(text='Covid_19 cases by Country',font=dict(size=28),x=0.5,xanchor='center'),
+        xaxis={'range':[0, conf_upper_range], 'autorange':False, 'title':{'text':'Covid-19 cases', 'font':{'size': 18}}},
+        yaxis={'range':[-0.5, 20.5], 'autorange':False, 'tickfont':{'size': 14}},
+        title={'text':'Covid_19 cases by Country', 'font':{'size':28}, 'x': 0.5, 'xanchor': 'center'},
         # Add button
-        updatemenus=[dict(
-            type="buttons",
-            buttons=[dict(label="Play",
-                          method="animate",
-                          # https://github.com/plotly/plotly.js/blob/master/src/plots/animation_attributes.js
-                          args=[None,
-                                {"frame": {"duration": 100, "redraw": True},
-                                 "transition": {"duration": 25,
-                                                "easing": "linear"}}]
-            )]
-        )]
+        updatemenus=[{
+            'type':"buttons",
+            'buttons':[{'label': "Play",
+                        'method': "animate",
+                        # https://github.com/plotly/plotly.js/blob/master/src/plots/animation_attributes.js
+                        'args': [None,
+                                 {"frame": {"duration": 100, "redraw": True},
+                                  "transition": {"duration": 25,
+                                                 "easing": "linear"}}
+                                 ]
+                        }]
+            }]
     ),
     frames=[
         go.Frame(
@@ -205,30 +207,20 @@ racing_bar = go.Figure(
                        orientation='h', text=value['Confirmed'])
             ],
             layout=go.Layout(
-                xaxis=dict(range=[0, conf_upper_range], autorange=True),
-                yaxis=dict(range=[-0.5, 20.5], autorange=True, tickfont=dict(size=14)),
-                title=dict(text='Covid-19 cases by Country: ' + str(value['Date'].values[0]),
-                           font=dict(size=28))
+                xaxis={'range': [0, (confirmed_dict[key]['Confirmed'].max())*1.1], 'autorange': False},
+                yaxis={'range':[-0.5, 20.5], 'autorange':False, 'tickfont':{'size':14}},
+                title={'text':'Covid-19 cases by Country: ' + str(value['Date'].values[0]),'font': {'size': 28}}
             )
         )
         for key, value in confirmed_dict.items()
     ]
 )
 pio.show(racing_bar)
-# + str(value['year'].values[0])
+
+'''
+Need to look at animation speed (slow down a little,
+look at the y axis layout, make it larger enough in the first frame to fit all labels (should prevent jittering in early frames)
+Add a colour scheme so different countries are different colours...
+'''
+
 #%%
-# now = datetime.now()
-# print(type(now))
-# print(type(dates[0]))
-# date = dates[0].astype(datetime)
-# print(type(date))
-# print(date)
-# # year = now.strftime()
-#
-# ddf = country_daily_df.copy()
-# date = ddf['Date'][0]
-# print(date, type(date))
-# ddf['Date'] = pd.to_datetime(ddf['Date'],infer_datetime_format=True)
-# print(ddf.info())
-# date = ddf['Date'][0]
-# print(date, type(date))
