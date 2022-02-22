@@ -193,7 +193,7 @@ racing_bar = go.Figure(
                         'method': "animate",
                         # https://github.com/plotly/plotly.js/blob/master/src/plots/animation_attributes.js
                         'args': [None,
-                                 {"frame": {"duration": 100, "redraw": True},
+                                 {"frame": {"duration": 150, "redraw": True},
                                   "transition": {"duration": 25,
                                                  "easing": "linear"}}
                                  ]
@@ -207,9 +207,10 @@ racing_bar = go.Figure(
                        orientation='h', text=value['Confirmed'])
             ],
             layout=go.Layout(
-                xaxis={'range': [0, (confirmed_dict[key]['Confirmed'].max())*1.1], 'autorange': False},
-                yaxis={'range':[-0.5, 20.5], 'autorange':False, 'tickfont':{'size':14}},
-                title={'text':'Covid-19 cases by Country: ' + str(value['Date'].values[0]),'font': {'size': 28}}
+                xaxis={'range': [0, (confirmed_dict[key]['Confirmed'].max())*1.05], 'autorange': False},
+                yaxis={'range':[-0.5, 20.5], 'autorange':False, 'tickfont':{'size':14},'automargin':False, 'ticklabeloverflow':'allow'},
+                title={'text':'Covid-19 cases by Country: ' + str(value['Date'].values[0]),'font': {'size': 28}},
+                margin={'l':200}
             )
         )
         for key, value in confirmed_dict.items()
@@ -219,7 +220,6 @@ pio.show(racing_bar)
 
 '''
 Need to look at animation speed (slow down a little,
-look at the y axis layout, make it larger enough in the first frame to fit all labels (should prevent jittering in early frames)
 Add a colour scheme so different countries are different colours...
 '''
 
