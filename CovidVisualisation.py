@@ -132,8 +132,11 @@ weekly_Newdeaths_plot = barplot(df=global_barplots_weekly_df,
                                       ylabel='Weekly Covid-19 Deaths',
                                       color=dths)
 weekly_Cumulativecases_plot.show()
+weekly_Newcases_plot.show()
+weekly_Cumulativedeaths_plot.show()
+weekly_Newdeaths_plot.show()
 #%%
-'''Racing Bar chart - display horizontal bar charts of top 10(?) countries (one for confirmed cases, one for deaths
+'''Racing Bar chart - display horizontal bar charts of top 20(?) countries (one for confirmed cases, one for deaths?
 Animate the bar chart with each frame displaying data from one month, starting Jan 2020'''
 # use country_daily as base for racing bar chart df
 racing_bar_df = country_daily_df.copy()
@@ -150,7 +153,7 @@ conf_upper_range = (racing_bar_df['Confirmed'].max())*1.1
 dths_upper_range = (racing_bar_df['Deaths'].max())*1.1
 # create dictionary to hold data for animation, each key-value pair will be data for one frame of the animated bar chart
 
-# create list of unique dates  - each frame of the animation will be based on data from a single month
+# create list of unique dates  - each frame of the animation will be based on data from a single day
 dates =[]
 for date in racing_bar_df['Date'].unique():
     dates.append(date)
@@ -158,13 +161,15 @@ for date in racing_bar_df['Date'].unique():
 # create list for dictionary keys
 dict_keys = []
 for i in range(len(dates)):
-    dict_keys.append('frame'+str(i+1))
+    dict_keys.append('frame'+str(i+1)) # each key will be frame1, frame2 etc
 
-# create dictionary for confirmed cases
+# create dictionary for confirmed cases,
+# keys will be frame1, frame2 etc (one frame for each date),
+# values will be a df that corresponds to data from the relevant date
 confirmed_dict = {}
 for date,key in zip(dates, dict_keys):
-    df = racing_bar_df[racing_bar_df['Date']==date] # get all data for selected month
-    df = df.nlargest(20,columns=['Confirmed'])
+    df = racing_bar_df[racing_bar_df['Date']==date] # get all data for selected date
+    df = df.nlargest(20,columns=['Confirmed']) # only interested in top 20 countries
     df = df.sort_values(by=['Date','Confirmed'])
     confirmed_dict[key] = df[['Date','Country_Region','Continent','Confirmed']]
 #%%
@@ -224,3 +229,34 @@ Add a colour scheme so different countries are different colours...
 '''
 
 #%%
+''' Create a density mapbox to show Cases (and deaths) globally'''
+mapbox_df = covid_cleaned_df.copy()
+
+mapbox_df = mapbox_df.sort_values(by=['Date','Province_State','Country_Region'])
+
+fig = px.density_mapbox(mapbox_df, lat='Lat', lon='Long', hover_name='Country_Region',
+                       hover_data=['Confirmed','Deaths'], animation_frame='Date',
+                       color_continuous_scale='jet', radius=7, zoom=0, height=700)
+fig.update_layout(title='Worldwide Covid-19 Cases with Time Lapse')
+fig.update_layout(mapbox_style = 'open-street-map', mapbox_center_lon = 0)
+fig.show()
+
+'''
+ - figure out what the values are showing - colours don't seem to match confirmed case #
+ - change animation speed 
+'''
+
+#%%
+# Note the color value = using country_daywise['Confirmed'] gives actual values, but most counties will not look any different
+#since the confirmed cases are so much lower than countries like the US or India
+
+fig = px.choropleth(country_daily_df, locations='Country_Region', locationmode='country names', color=np.log(country_daily_df['Confirmed']),
+                   hover_name='Country_Region', animation_frame=country_daily_df['Date'],
+                   title='Cases over time', color_continuous_scale=px.colors.sequential.Inferno)
+fig.update(layout_coloraxis_showscale=True)
+fig.show()
+
+''' 
+ - update title of legend to indicate log-confirmed cases
+ - change animation speed?
+'''
