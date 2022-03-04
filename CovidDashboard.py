@@ -5,18 +5,13 @@ import plotly.graph_objects as go
 import dash
 from dash import html, dcc
 from dash.dependencies import Input, Output
+import dash_bootstrap_components as dbc
 
-app = dash.Dash(__name__)
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.SANDSTONE])
+# other dash themes : https://bootswatch.com/
+
 # --------------------------------------------------------------------------------------------------------------
-# Import and clean data
-#%%
-# (bees example from Charming data)
-# df = pd.read_csv('intro_bees.csv')
-#
-# df = df.groupby(['State', 'ANSI', 'Affected by', 'Year', 'state_code'])[['Pct of Colonies Impacted']].mean()
-# df.reset_index(inplace=True)
-# print(df.head())
-#%%
+# %%
 covid_cleaned_df = pd.read_csv('H:/Covid19Dashboard/covid_cleaned.csv')
 country_daily_df = pd.read_csv('H:/Covid19Dashboard/country_daily.csv')
 country_latest_df = pd.read_csv('H:/Covid19Dashboard/country_latest.csv')
@@ -24,110 +19,46 @@ daily_total_df = pd.read_csv('H:/Covid19Dashboard/daily_total.csv')
 
 # --------------------------------------------------------------------------------------------------------------
 # App Layout
-#%%
-# (bees example from Charming data)
-# app.layout = html.Div([
-#
-#     html.H1('Web Application Dashboards with Dash', style={'text-align': 'center'}),
-#
-#     dcc.Dropdown(id='slct_year',
-#                  options=[
-#                      {'label': '2015', 'value': 2015},
-#                      {'label': '2016', 'value': 2016},
-#                      {'label': '2017', 'value': 2017},
-#                      {'label': '2018', 'value': 2018}],
-#                  multi=False,
-#                  value=2015,
-#                  style={'width':'40%'}
-#                  ),
-#
-#     html.Div(id='output_container', children=[]),
-#     html.Br(),
-#
-#     dcc.Graph(id='my_bee_map', figure={})
-# ])
-#%%
+# %%
 app.layout = html.Div([
-    html.H1('COVID19 Pandemic Dashboard', style={'text-align':'center'}),
-    dcc.Dropdown(id='barchart_dropdown',
-        options=[
-            {'label':'Total cases', 'value': 'Cumulative cases'},
-            {'label':'New cases', 'value': 'New_cases'},
-            {'label': 'Total deaths', 'value': 'Total Deaths'},
-            {'label': 'New deaths', 'value': 'New_deaths'}
-        ],
-        value='Cumulative cases'
-    ),
-    html.Div(id='output_container', children=[]),
-    html.Br(),
-    dcc.Graph(id='barchart', figure={})
+    dbc.Row(dbc.Col(html.H1('COVID19 Pandemic Dashboard', style={'text-align': 'center'}),
+                    width={'size': 12})
+            ),
+    dbc.Row(dbc.Col(dcc.Dropdown(id='barchart_dropdown',
+                                 options=[
+                                     {'label': 'Total cases', 'value': 'Cumulative cases'},
+                                     {'label': 'New cases', 'value': 'New_cases'},
+                                     {'label': 'Total deaths', 'value': 'Total Deaths'},
+                                     {'label': 'New deaths', 'value': 'New_deaths'}
+                                 ],
+                                 value='Cumulative cases'
+                                 ),
+                    width=4
+                    ),
+            ),
+    dbc.Row(dbc.Col(html.Div(id='output_container', children=[]), width={'size': 6, 'offset': 1})),
+    dbc.Row(dbc.Col(dcc.Graph(id='barchart', figure={}), width=4))
+
 ])
+'''
+Need to figure out how to fix the dropdown styling
+'''
 
 
 # --------------------------------------------------------------------------------------------------------------
 # Connect the Plotly graphs with Dash Components
-#%%
-# @app.callback(
-#     [Output(component_id='output_container', component_property='children'),
-#      Output(component_id='my_bee_map', component_property='figure')],
-#     [Input(component_id='slct_year', component_property='value')]
-# )
-# def update_graph(option_slctd):
-#     print(option_slctd)
-#     print(type(option_slctd))
-#
-#     container = 'The year chosen by user was: {}'.format(option_slctd)
-#
-#     dff = df.copy()
-#     dff = dff[dff['Year']==option_slctd]
-#     dff = dff[dff['Affected by']=='Varroa_mites']
-#
-#     # #Plotly Express
-#     # fig = px.choropleth(
-#     #     data_frame=dff,
-#     #     locationmode='USA-states',
-#     #     locations='state_code',
-#     #     scope='usa',
-#     #     color='Pct of Colonies Impacted',
-#     #     hover_data=['State','Pct of Colonies Impacted'],
-#     #     color_continuous_scale=px.colors.sequential.YlOrRd,
-#     #     labels={'Pct of Colonies Impacted': '% of Bee Colonies'},
-#     #     template='plotly_dark'
-#     # )
-#
-#     # Plotly Graph objects
-#     fig = go.Figure(
-#         data=[go.Choropleth(
-#             locationmode='USA-states',
-#             locations=dff['state_code'],
-#             z=dff['Pct of Colonies Impacted'].astype(float),
-#             colorscale='Reds'
-#         )]
-#     )
-#     fig.update_layout(
-#         title_text='Bees Affected by Mites in the USA',
-#         title_xanchor='center',
-#         title_font=dict(size=24),
-#         title_x=0.5,
-#         geo=dict(scope='usa')
-#     )
-#
-#
-#     return container, fig
-
-#%%
+# %%
 @app.callback(
     [Output(component_id='output_container', component_property='children'),
      Output(component_id='barchart', component_property='figure')],
-    [Input(component_id='barchart_dropdown',component_property='value')]
+    [Input(component_id='barchart_dropdown', component_property='value')]
 )
-
 def update_barchart(selected_barchart):
     print(selected_barchart)
 
     container = 'Selected Chart: {}'.format(selected_barchart)
 
-    #sort, filter and group the daily totals df
+    # sort, filter and group the daily totals df
     df = daily_total_df.copy()
     df = df.rename(columns={'Confirmed': 'Cumulative cases', 'Deaths': 'Total Deaths'})
     # convert date colum to datetime format
@@ -141,7 +72,7 @@ def update_barchart(selected_barchart):
          'Total Deaths': 'max',  # No of deaths  at the end of the week
          'New_cases': 'sum',  # number of new cases each day throughout the week
          'New_deaths': 'sum'}  # number of new deaths each day throughout the week
-         ).reset_index()  # flatten multi-index for px
+    ).reset_index()  # flatten multi-index for px
 
     bar = px.bar(df_weekly
                  , x='Date'
@@ -152,8 +83,8 @@ def update_barchart(selected_barchart):
                  , title='Weekly COVID19 {}'.format(selected_barchart)
                  , hover_data=['Date', selected_barchart]
                  , template='seaborn'
-                 ,labels={'Date':'Date',
-                      selected_barchart:'Weekly COVID19 {}'.format(selected_barchart)})
+                 , labels={'Date': 'Date',
+                           selected_barchart: 'Weekly COVID19 {}'.format(selected_barchart)})
 
     bar.update_layout(font={'family': 'arial', 'size': 16}, )
     bar.update_yaxes(showgrid=False, tickfont={'family': 'arial', 'size': 14})
@@ -167,8 +98,9 @@ def update_barchart(selected_barchart):
 
     return container, bar
 
+
 '''
-Probably need to resize it, once I get other graphs added
+Maybe change bar charts so the New cases appears as a line plot overlaying the cumulative cases, or vice-versa
 '''
 # --------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
