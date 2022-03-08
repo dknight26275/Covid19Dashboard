@@ -71,46 +71,123 @@ last_update = daily_total_df['Date'].max()  # need to check whether the df needs
 # '''
 # Need to figure out how to fix the dropdown styling on dark backgrounds
 # '''
-#%%
+# %%
 # demo layout with rows of different heights
 # https://github.com/facultyai/dash-bootstrap-components/issues/286
 app.layout = dbc.Container(
-    [
-        dbc.Row(
-            [
-                dbc.Col(
-                    html.P("This is column 1"),
-                    width=8,
-                    style={"height": "100%", "background-color": "red"},
-                ),
-                dbc.Col(
-                    html.P("This is column 2"),
-                    width=4,
-                    style={"height": "100%", "background-color": "green"},
-                ),
-            ],
-            className="h-75",
-        ),
-        dbc.Row(
-            [
-                dbc.Col(
-                    html.P("This is column 3"),
-                    width=8,
-                    style={"height": "100%", "background-color": "blue"},
-                ),
-                dbc.Col(
-                    html.P("This is column 4"),
-                    width=4,
-                    style={"height": "100%", "background-color": "cyan"},
+    id='root',
+    children=[
+        html.Div(
+            id='banner',
+            children=[
+                dbc.Row(
+                    [
+                        dbc.Col(
+                            html.P("Banner"),
+                            width=12,
+                            style={"height": "100%", "background-color": "red"},
+                        )
+                    ],
+                    className='h-100'
                 ),
             ],
-            className="h-25",
+            style={'height': '10%'}
         ),
+        html.Div(
+            id='container',
+            children=[
+                dbc.Row(
+                    [
+                        dbc.Col(
+                            [
+                                dbc.Row(  # white bg
+                                    [
+                                        dbc.Col(
+                                            [
+                                                dbc.Row(
+                                                    id='country_select',
+                                                    children=
+                                                    [
+                                                        html.P('select country dropdown and selected country stats')
+                                                    ],
+                                                    style={'height': '50%', 'background-color': 'green'}
+                                                ),
+                                                dbc.Row(
+                                                    id='country_cases_barchart',
+                                                    children=[html.P('Selected Country cases barchart')],
+                                                    style={'height': '50%', 'background-color': 'red'},
+                                                )
+                                            ],
+                                            width={'size': 3},
+                                            style={'height': '100%', 'background-color': 'blue'},
+                                        ),
+                                        dbc.Col(
+                                            id='map_container',
+                                            children=[html.P('Choropleth map')],
+                                            width={'size': 6},
+                                            style={'height': '100%', 'background-color': 'cyan'},
+                                        ),
+                                        dbc.Col(
+                                            [
+                                                dbc.Row(
+                                                    id='global_cases_barchart',
+                                                    children=[html.P('Global cases barchart')],
+                                                    style={'height': '50%', 'background-color': 'green'}
+                                                ),
+                                                dbc.Row(
+                                                    id='global_deaths_barchart',
+                                                    children=[html.P('Global deaths barchart')],
+                                                    # width={'size':6},
+                                                    style={'height': '50%', 'background-color': 'red'},
+                                                )
+                                            ],
+                                            # style={'height':'100%'},
+                                            width={'size': 3},
+                                            style={"height": "100%", "background-color": "blue"},
+                                        ),
+                                    ],
+                                    style={'height': '66%', "background-color": "purple"}
+                                ),
+                                dbc.Row(
+                                    [
+                                        dbc.Col(
+                                            id='country-deaths-barchart',
+                                            children=[html.P("Selected country deaths barchart")],
+                                            width=3,
+                                            style={"height": "100%", "background-color": "orange"},
+                                        ),
+                                        dbc.Col(
+                                            id='global_cumulative_stats',
+                                            children=[html.P("Global total cases and deaths")],
+                                            width=3,
+                                            style={"height": "100%", "background-color": "pink"},
+                                        ),
+                                        dbc.Col(
+                                            id='global_28days_stats',
+                                            children=[html.P("Global cases and deaths in last 28 days")],
+                                            width=3,
+                                            style={"height": "100%", "background-color": "orange"},
+                                        ),
+                                        dbc.Col(
+                                            id='global_7days_stats',
+                                            children=[html.P("This is column 7")],
+                                            width=3,
+                                            style={"height": "100%", "background-color": "pink"},
+                                        ),
+                                    ],
+                                    style={'height': '34%', "background-color": "black"}
+                                ),
+                            ]
+                        )
+                    ],
+                    style={'height': '90%', "background-color": "grey"}
+                ),
+            ],
+            style={'height': '100%'}
+        )
     ],
-    style={"height": "100vh"},
+    style={"height": "100vh", "background-color": "yellow"},
 )
-
-
 
 # --------------------------------------------------------------------------------------------------------------
 # Connect the Plotly graphs with Dash Components
