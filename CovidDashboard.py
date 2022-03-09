@@ -19,58 +19,20 @@ country_latest_df = pd.read_csv('H:/Covid19Dashboard/country_latest.csv')
 daily_total_df = pd.read_csv('H:/Covid19Dashboard/daily_total.csv')
 
 last_update = daily_total_df['Date'].max()  # need to check whether the df needs sorting first
-
+'''
+Need to create bunch of variables to hold data:
+    - total global cases/deaths
+    - global cases/deaths in last 28days
+    - percentage change in cases/deaths from previous month
+    - global cases/deaths in last 7 days
+    - percentage change in cases/deaths from previous week
+    - cases/100,000 population
+    - deaths/100,000 cases
+    
+'''
 # --------------------------------------------------------------------------------------------------------------
 # App Layout
-# %%
-# app.layout = html.Div(
-#     id='root',
-#     children=[
-#         html.Div(
-#             id='banner',
-#             children=[
-#                 dbc.Row(
-#                     dbc.Col(html.H1('COVID19 Pandemic Dashboard', style={'text-align': 'center'}),
-#                             width={'size': 8},
-#                             id='banner_title'
-#                             ),
-#                     dbc.Col(html.H4('Last updated on {}'.format(last_update)),
-#                             width={'size': 4},
-#                             id='banner_last_update'
-#                             )
-#                 ),
-#             ]
-#         ),
-#         # change this div to hold 2 bar graphs, one for cases, one for deaths
-#         # each bar chart should have a button to switch between cumulative and weekly values
-#         html.Div(
-#             id='global_barchart_container',
-#             children=[
-#                 dbc.Row(
-#                     dbc.Col(
-#                         dcc.Dropdown(
-#                             id='barchart_dropdown',
-#                             options=[
-#                                 {'label': 'Total cases', 'value': 'Cumulative cases'},
-#                                 {'label': 'New cases', 'value': 'New_cases'},
-#                                 {'label': 'Total deaths', 'value': 'Total Deaths'},
-#                                 {'label': 'New deaths', 'value': 'New_deaths'}
-#                             ],
-#                             value='Cumulative cases'
-#                         ),
-#                         width=4
-#                     ),
-#                 ),
-#                 dbc.Row(dbc.Col(dcc.Graph(id='barchart', figure={}), width=4)), # cases barcharts
-#                 dbc.Row(dbc.Col(dcc.Graph(id='barchart', figure={}), width=4)) # deaths barchart
-#             ]
-#         )
-#     ]
-# )
-#
-# '''
-# Need to figure out how to fix the dropdown styling on dark backgrounds
-# '''
+
 # %%
 # demo layout with rows of different heights
 # https://github.com/facultyai/dash-bootstrap-components/issues/286
@@ -83,9 +45,22 @@ app.layout = dbc.Container(
                 dbc.Row(
                     [
                         dbc.Col(
-                            html.P("Banner"),
-                            width=12,
-                            style={"height": "100%", "background-color": "red"},
+                            html.A(
+                                [html.H5('Data sourced from JHU CSSE', style={'text-align': 'center'})],
+                                href="https://github.com/CSSEGISandData/COVID-19"
+                            ),
+                            width=2,
+                            style={"height": "100%"},
+                        ),
+                        dbc.Col(
+                            html.H1('COVID19 Pandemic Dashboard', style={'text-align': 'center'}),
+                            width=8,
+                            style={"height": "100%"},
+                        ),
+                            dbc.Col(
+                            html.H4('Last updated: {}'.format(last_update), style={'text-align': 'center'}),
+                            width=2,
+                            style={"height": "100%"},
                         )
                     ],
                     className='h-100'
@@ -106,89 +81,139 @@ app.layout = dbc.Container(
                                             [
                                                 dbc.Row(
                                                     id='country_select',
-                                                    children=
-                                                    [
-                                                        html.P('select country dropdown and selected country stats')
+                                                    children=[
+                                                        html.H5('select country dropdown'),
+                                                        dcc.Dropdown(
+                                                            id='country_dropdown',
+                                                            options=[ # need to update the options
+                                                                {'label': 'Total cases', 'value': 'Cumulative cases'},
+                                                                {'label': 'New cases', 'value': 'New_cases'},
+                                                                {'label': 'Total deaths', 'value': 'Total Deaths'},
+                                                                {'label': 'New deaths', 'value': 'New_deaths'}
+                                                            ],
+                                                            value='Cumulative cases'
+                                                        ),
                                                     ],
-                                                    style={'height': '50%', 'background-color': 'green'}
+                                                    style={'height': '50%',}
                                                 ),
                                                 dbc.Row(
-                                                    id='country_cases_barchart',
-                                                    children=[html.P('Selected Country cases barchart')],
-                                                    style={'height': '50%', 'background-color': 'red'},
+                                                    id='country_charts',
+                                                    children=[
+                                                        html.H5('Selected Country charts'),
+                                                        dcc.Graph(id='selected_country_barcharts', figure={}),
+                                                    ],
+                                                    style={'height': '50%',},
                                                 )
                                             ],
                                             width={'size': 3},
-                                            style={'height': '100%', 'background-color': 'blue'},
+                                            style={'height': '100%',},
                                         ),
                                         dbc.Col(
                                             id='map_container',
-                                            children=[html.P('Choropleth map')],
+                                            children=[
+                                                html.H5('Choropleth map'),
+                                                dcc.Graph(id='choropleth_map', figure={}),
+                                            ],
                                             width={'size': 6},
-                                            style={'height': '100%', 'background-color': 'cyan'},
+                                            style={'height': '100%',},
                                         ),
                                         dbc.Col(
                                             [
                                                 dbc.Row(
-                                                    id='global_cases_barchart',
-                                                    children=[html.P('Global cases barchart')],
-                                                    style={'height': '50%', 'background-color': 'green'}
+                                                    id='global_cases',
+                                                    children=[
+                                                        html.H5('Global cases barchart'),
+                                                        dcc.Graph(id='global_cases_barchart', figure={}),
+                                                    ],
+                                                    style={'height': '50%',}
                                                 ),
                                                 dbc.Row(
-                                                    id='global_deaths_barchart',
-                                                    children=[html.P('Global deaths barchart')],
+                                                    id='global_deaths',
+                                                    children=[
+                                                        html.H5('Global deaths barchart'),
+                                                        dcc.Graph(id='global_deaths_barchart', figure={}),
+                                                    ],
                                                     # width={'size':6},
-                                                    style={'height': '50%', 'background-color': 'red'},
+                                                    style={'height': '50%',},
                                                 )
                                             ],
                                             # style={'height':'100%'},
                                             width={'size': 3},
-                                            style={"height": "100%", "background-color": "blue"},
+                                            style={"height": "100%",},
                                         ),
                                     ],
-                                    style={'height': '66%', "background-color": "purple"}
+                                    style={'height': '66%',}
                                 ),
                                 dbc.Row(
                                     [
                                         dbc.Col(
-                                            id='country-deaths-barchart',
-                                            children=[html.P("Selected country deaths barchart")],
+                                            id='selected_country_stats',
+                                            children=[ #maybe make this a table?
+                                                html.H5("Selected country stats"),
+                                                html.H6("Total COVID 19 cases:  ###"),
+                                                html.H6("Total COVID 19 related deaths: ###?"),
+                                                html.H6("COVID 19 cases in the last month:  ###"),
+                                                html.H6("COVID 19 related deaths in the last month: ###?"),
+                                                html.H6("COVID 19 cases in the last week:  ###"),
+                                                html.H6("COVID 19 related deaths in the last week: ###?"),
+                                            ],
                                             width=3,
-                                            style={"height": "100%", "background-color": "orange"},
+                                            style={"height": "100%",},
                                         ),
                                         dbc.Col(
                                             id='global_cumulative_stats',
-                                            children=[html.P("Global total cases and deaths")],
+                                            children=[
+                                                html.H5("Global total cases and deaths"),
+                                                html.H6("Total COVID 19 cases:  ###"),
+                                                html.H6("Total COVID 19 related deaths: ###?"),
+                                                html.H6("COVID 19 related cases/100,000  population: ###?"),
+                                                html.H6("COVID 19 related deaths/100,000  cases: ###?"),
+                                            ],
                                             width=3,
-                                            style={"height": "100%", "background-color": "pink"},
+                                            style={"height": "100%",},
                                         ),
                                         dbc.Col(
                                             id='global_28days_stats',
-                                            children=[html.P("Global cases and deaths in last 28 days")],
+                                            children=[
+                                                html.H5("Global cases and deaths in last 28 days"),
+                                                html.H6("COVID 19 cases in the last month:  ###"),
+                                                html.H6("Percentage change from the previous month:  ###"),
+                                                html.H6("Total COVID 19 related deaths in the last month: ###?"),
+                                                html.H6("Percentage change from the previous month:  ###"),
+
+                                            ],
                                             width=3,
-                                            style={"height": "100%", "background-color": "orange"},
+                                            style={"height": "100%",},
                                         ),
                                         dbc.Col(
                                             id='global_7days_stats',
-                                            children=[html.P("This is column 7")],
+                                            children=[
+                                                html.H5("Global cases and deaths in last 7 days"),
+                                                html.H6("COVID 19 cases in the last week:  ###"),
+                                                html.H6("Percentage change from the previous week:  ###"),
+                                                html.H6("Total COVID 19 related deaths in the last week: ###?"),
+                                                html.H6("Percentage change from the previous week:  ###"),
+                                            ],
                                             width=3,
-                                            style={"height": "100%", "background-color": "pink"},
+                                            style={"height": "100%",},
                                         ),
                                     ],
-                                    style={'height': '34%', "background-color": "black"}
+                                    style={'height': '34%',}
                                 ),
                             ]
                         )
                     ],
-                    style={'height': '90%', "background-color": "grey"}
+                    style={'height': '90%',}
                 ),
             ],
             style={'height': '100%'}
         )
     ],
-    style={"height": "100vh", "background-color": "yellow"},
+    style={"height": "100vh"},
 )
-
+'''
+Maybe use cards for the country and global stats..., either that or some css to style the bottom columns
+'''
 # --------------------------------------------------------------------------------------------------------------
 # Connect the Plotly graphs with Dash Components
 # %%
