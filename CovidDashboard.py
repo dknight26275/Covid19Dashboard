@@ -13,23 +13,47 @@ app = dash.Dash(__name__, external_stylesheets=[dbc.themes.SANDSTONE])
 
 # --------------------------------------------------------------------------------------------------------------
 # %%
+# load data
 covid_cleaned_df = pd.read_csv('H:/Covid19Dashboard/covid_cleaned.csv')
 country_daily_df = pd.read_csv('H:/Covid19Dashboard/country_daily.csv')
 country_latest_df = pd.read_csv('H:/Covid19Dashboard/country_latest.csv')
 daily_total_df = pd.read_csv('H:/Covid19Dashboard/daily_total.csv')
 
-last_update = daily_total_df['Date'].max()  # need to check whether the df needs sorting first
-'''
-Need to create bunch of variables to hold data:
-    - total global cases/deaths
-    - global cases/deaths in last 28days
-    - percentage change in cases/deaths from previous month
-    - global cases/deaths in last 7 days
-    - percentage change in cases/deaths from previous week
-    - cases/100,000 population
-    - deaths/100,000 cases
-    
-'''
+# sort, filter and group the daily totals bar_df
+bar_df = daily_total_df.copy()
+bar_df = bar_df.rename(columns={'Confirmed': 'Cumulative cases', 'Deaths': 'Total Deaths'})
+# convert date colum to datetime format
+bar_df['Date'] = pd.to_datetime(bar_df['Date'], infer_datetime_format=True)
+# sort by Date
+bar_df = bar_df.sort_values('Date', ignore_index=True)
+# group data by week
+df_weekly = bar_df.groupby(by=[pd.Grouper(key='Date', axis=0, freq='W')]) \
+    [['Date', 'Cumulative cases', 'Total Deaths', 'New_cases', 'New_deaths']].agg(
+    {'Cumulative cases': 'max',  # No of confirmed cases at the end of the week
+     'Total Deaths': 'max',  # No of deaths  at the end of the week
+     'New_cases': 'sum',  # number of new cases each day throughout the week
+     'New_deaths': 'sum'}  # number of new deaths each day throughout the week
+).reset_index()  # flatten multi-index for px
+
+
+# initialise variables
+last_update = daily_total_df['Date'].max()
+global_total_cases = int(country_latest_df['Confirmed'].sum())
+global_total_deaths = int(country_latest_df['Deaths'].sum())
+cases_per_million = int(country_latest_df['Cases_per_million'].mean())
+deaths_per_100 = country_latest_df['Deaths_per_100'].mean()
+cases_last_month = int(country_latest_df['New_cases_last_month'].sum())
+cases_one_month_change_pc = (cases_last_month/global_total_cases)*100
+deaths_last_month = int(country_latest_df['New_deaths_last_month'].sum())
+deaths_one_month_change_pc = (deaths_last_month/global_total_deaths)*100
+cases_last_week = int(country_latest_df['New_cases_last_week'].sum())
+cases_one_week_change_pc = (cases_last_week/global_total_cases)*100
+deaths_last_week = int(country_latest_df['New_deaths_last_week'].sum())
+deaths_one_week_change_pc = (deaths_last_week/global_total_deaths)*100
+
+dths = '#A32323' # colour for styling deaths
+conf = '#115806' # colur for styling confirmed cases
+
 # --------------------------------------------------------------------------------------------------------------
 # App Layout
 
@@ -82,16 +106,10 @@ app.layout = dbc.Container(
                                                 dbc.Row(
                                                     id='country_select',
                                                     children=[
-                                                        html.H5('select country dropdown'),
-                                                        dcc.Dropdown(
+                                                         dcc.Dropdown(
                                                             id='country_dropdown',
-                                                            options=[ # need to update the options
-                                                                {'label': 'Total cases', 'value': 'Cumulative cases'},
-                                                                {'label': 'New cases', 'value': 'New_cases'},
-                                                                {'label': 'Total deaths', 'value': 'Total Deaths'},
-                                                                {'label': 'New deaths', 'value': 'New_deaths'}
-                                                            ],
-                                                            value='Cumulative cases'
+                                                            options=[{'label':x,'value':x} for x in country_latest_df.Country_Region.unique()],
+                                                            placeholder='Select a country'
                                                         ),
                                                     ],
                                                     style={'height': '50%',}
@@ -123,6 +141,16 @@ app.layout = dbc.Container(
                                                     id='global_cases',
                                                     children=[
                                                         html.H5('Global cases barchart'),
+                                                        dcc.RadioItems(
+                                                            id='global_cases_selector',
+                                                            options=
+                                                            [
+                                                                {'label':'Cumulative', 'value':'Cumulative cases'},
+                                                                {'label':'Weekly', 'value':'New_cases'}
+                                                            ],
+                                                            value='New_cases',
+                                                            # inline=True
+                                                        ),
                                                         dcc.Graph(id='global_cases_barchart', figure={}),
                                                     ],
                                                     style={'height': '50%',}
@@ -131,6 +159,16 @@ app.layout = dbc.Container(
                                                     id='global_deaths',
                                                     children=[
                                                         html.H5('Global deaths barchart'),
+                                                        dcc.RadioItems(
+                                                            id='global_deaths_selector',
+                                                            options=
+                                                            [
+                                                                {'label': 'Cumulative', 'value': 'Total Deaths'},
+                                                                {'label': 'Weekly', 'value': 'New_deaths'}
+                                                            ],
+                                                            value='New_deaths',
+                                                            # inline=True
+                                                        ),
                                                         dcc.Graph(id='global_deaths_barchart', figure={}),
                                                     ],
                                                     # width={'size':6},
@@ -163,11 +201,11 @@ app.layout = dbc.Container(
                                         dbc.Col(
                                             id='global_cumulative_stats',
                                             children=[
-                                                html.H5("Global total cases and deaths"),
-                                                html.H6("Total COVID 19 cases:  ###"),
-                                                html.H6("Total COVID 19 related deaths: ###?"),
-                                                html.H6("COVID 19 related cases/100,000  population: ###?"),
-                                                html.H6("COVID 19 related deaths/100,000  cases: ###?"),
+                                                html.H5("Total cases and deaths globally"),
+                                                html.H6("Total COVID 19 cases:  {}".format(global_total_cases)),
+                                                html.H6("Total COVID 19 related deaths: {}".format(global_total_deaths)),
+                                                html.H6("COVID 19 related cases per million people: {}".format(cases_per_million)),
+                                                html.H6("COVID 19 related deaths/100 cases: {}".format(deaths_per_100)),
                                             ],
                                             width=3,
                                             style={"height": "100%",},
@@ -176,10 +214,10 @@ app.layout = dbc.Container(
                                             id='global_28days_stats',
                                             children=[
                                                 html.H5("Global cases and deaths in last 28 days"),
-                                                html.H6("COVID 19 cases in the last month:  ###"),
-                                                html.H6("Percentage change from the previous month:  ###"),
-                                                html.H6("Total COVID 19 related deaths in the last month: ###?"),
-                                                html.H6("Percentage change from the previous month:  ###"),
+                                                html.H6("COVID 19 cases in the last month: {}".format(cases_last_month)),
+                                                html.H6("Percentage change from the previous month: {}".format(cases_one_month_change_pc)),
+                                                html.H6("Total COVID 19 related deaths in the last month: {}".format(deaths_last_month)),
+                                                html.H6("Percentage change from the previous month: {}".format(deaths_one_month_change_pc)),
 
                                             ],
                                             width=3,
@@ -189,10 +227,10 @@ app.layout = dbc.Container(
                                             id='global_7days_stats',
                                             children=[
                                                 html.H5("Global cases and deaths in last 7 days"),
-                                                html.H6("COVID 19 cases in the last week:  ###"),
-                                                html.H6("Percentage change from the previous week:  ###"),
-                                                html.H6("Total COVID 19 related deaths in the last week: ###?"),
-                                                html.H6("Percentage change from the previous week:  ###"),
+                                                html.H6("COVID 19 cases in the last week: {}".format(cases_last_week)),
+                                                html.H6("Percentage change from the previous week: {}".format(cases_one_week_change_pc)),
+                                                html.H6("Total COVID 19 related deaths in the last week: {}".format(deaths_last_week)),
+                                                html.H6("Percentage change from the previous week: {}".format(deaths_one_week_change_pc)),
                                             ],
                                             width=3,
                                             style={"height": "100%",},
@@ -217,58 +255,62 @@ Maybe use cards for the country and global stats..., either that or some css to 
 # --------------------------------------------------------------------------------------------------------------
 # Connect the Plotly graphs with Dash Components
 # %%
-# @app.callback(
-#     Output(component_id='barchart', component_property='figure'),
-#     [Input(component_id='barchart_dropdown', component_property='value')]
-# )
-# def update_barchart(selected_barchart):
-#     print(selected_barchart)
-#
-#     # sort, filter and group the daily totals df
-#     df = daily_total_df.copy()
-#     df = df.rename(columns={'Confirmed': 'Cumulative cases', 'Deaths': 'Total Deaths'})
-#     # convert date colum to datetime format
-#     df['Date'] = pd.to_datetime(df['Date'], infer_datetime_format=True)
-#     # sort by Date
-#     df = df.sort_values('Date', ignore_index=True)
-#     # group data by week
-#     df_weekly = df.groupby(by=[pd.Grouper(key='Date', axis=0, freq='W')]) \
-#         [['Date', 'Cumulative cases', 'Total Deaths', 'New_cases', 'New_deaths']].agg(
-#         {'Cumulative cases': 'max',  # No of confirmed cases at the end of the week
-#          'Total Deaths': 'max',  # No of deaths  at the end of the week
-#          'New_cases': 'sum',  # number of new cases each day throughout the week
-#          'New_deaths': 'sum'}  # number of new deaths each day throughout the week
-#     ).reset_index()  # flatten multi-index for px
-#
-#     bar = px.bar(df_weekly
-#                  , x='Date'
-#                  , y=selected_barchart
-#                  , opacity=0.9
-#                  , orientation='v'
-#                  , barmode='relative'
-#                  , title='Weekly COVID19 {}'.format(selected_barchart)
-#                  , hover_data=['Date', selected_barchart]
-#                  , template='simple_white'
-#                  , labels={'Date': 'Date',
-#                            selected_barchart: '{} per week'.format(selected_barchart)})
-#
-#     bar.update_layout(font={'family': 'arial', 'size': 16}, )
-#     bar.update_yaxes(showgrid=False, tickfont={'family': 'arial', 'size': 14})
-#     bar.update_xaxes(showgrid=False, tickfont={'family': 'arial', 'size': 14})
-#     if (selected_barchart == 'Cumulative cases'):
-#         bar.update_traces(marker_color='#115806')
-#     elif (selected_barchart == 'New_cases'):
-#         bar.update_traces(marker_color='#115806')
-#     else:
-#         bar.update_traces(marker_color='#A32323')
-#
-#     return bar
-#
-#
-# '''
-# Maybe change bar charts so the New cases appears as a line plot overlaying the cumulative cases, or vice-versa
-# '''
-# %%
+#global cases barcharts
+@app.callback(
+    Output(component_id='global_cases_barchart', component_property='figure'),
+    [Input(component_id='global_cases_selector', component_property='value')]
+)
+def update_cases_barchart(selected_barchart):
+    print(selected_barchart)
+
+    cases_barchart = px.bar(df_weekly
+                 , x='Date'
+                 , y=selected_barchart
+                 , opacity=0.9
+                 , orientation='v'
+                 , barmode='relative'
+                 # , title='Global COVID19 {}'.format(selected_barchart)
+                 , hover_data=['Date', selected_barchart]
+                 , template='simple_white'
+                 , labels={'Date': 'Date',
+                           selected_barchart: '{} per week'.format(selected_barchart)})
+
+    cases_barchart.update_layout(font={'family': 'arial', 'size': 12}, )
+    cases_barchart.update_yaxes(showgrid=False, tickfont={'family': 'arial', 'size': 12})
+    cases_barchart.update_xaxes(showgrid=False, tickfont={'family': 'arial', 'size': 12})
+    cases_barchart.update_traces(marker_color=conf)
+
+    return cases_barchart
+
+#global deaths barcharts
+@app.callback(
+    Output(component_id='global_deaths_barchart', component_property='figure'),
+    [Input(component_id='global_deaths_selector', component_property='value')]
+)
+def update_deaths_barchart(selected_barchart):
+    print(selected_barchart)
+
+    deaths_barchart = px.bar(df_weekly
+                             , x='Date'
+                             , y=selected_barchart
+                             , opacity=0.9
+                             , orientation='v'
+                             , barmode='relative'
+                             # , title='Global COVID19 {}'.format(selected_barchart)
+                             , hover_data=['Date', selected_barchart]
+                             , template='simple_white'
+                             , labels={'Date': 'Date',
+                           selected_barchart: '{} per week'.format(selected_barchart)})
+
+    deaths_barchart.update_layout(font={'family': 'arial', 'size': 12}, )
+    deaths_barchart.update_yaxes(showgrid=False, tickfont={'family': 'arial', 'size': 12})
+    deaths_barchart.update_xaxes(showgrid=False, tickfont={'family': 'arial', 'size': 12})
+    deaths_barchart.update_traces(marker_color=dths)
+
+    return deaths_barchart
+
+
+
 # --------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
     app.run_server(debug=True)
