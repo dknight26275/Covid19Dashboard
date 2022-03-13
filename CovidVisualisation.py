@@ -49,7 +49,7 @@ weekly global cases/deaths (Cumulative and new cases/deaths) (use daily_total)
 continent/Country breakdown - same graphs, maybe line plots?
 racing bar graph of top 10 (20?) nations, cases/deaths'''
 #%%
-''' Create bar_df for Barplots of Global total confirmed cases and deaths'''
+''' Create global_bar_df for Barplots of Global total confirmed cases and deaths'''
 # create copy of daily_totals
 global_barplots_df = daily_total_df.copy()
 #rename columns for better display
@@ -74,7 +74,7 @@ global_barplots_weekly_df = global_barplots_df.groupby(by=[pd.Grouper(key='Date'
 ).reset_index() # flatten multi-index for px
 
 #%%
-''' Create bar_df for Barplots of confirmed cases and deaths grouped by continent/country'''
+''' Create global_bar_df for Barplots of confirmed cases and deaths grouped by continent/country'''
 
 #%%
 # function to style bar plots
@@ -138,7 +138,7 @@ weekly_Newdeaths_plot.show()
 #%%
 '''Racing Bar chart - display horizontal bar charts of top 20(?) countries (one for confirmed cases, one for deaths?
 Animate the bar chart with each frame displaying data from one month, starting Jan 2020'''
-# use country_daily as base for racing bar chart bar_df
+# use country_daily as base for racing bar chart global_bar_df
 racing_bar_df = country_daily_df.copy()
 # convert Date column to datetype for grouping
 # racing_bar_df['Date'] = pd.to_datetime(racing_bar_df['Date'],infer_datetime_format=True)
@@ -165,7 +165,7 @@ for i in range(len(dates)):
 
 # create dictionary for confirmed cases,
 # keys will be frame1, frame2 etc (one frame for each date),
-# values will be a bar_df that corresponds to data from the relevant date
+# values will be a global_bar_df that corresponds to data from the relevant date
 confirmed_dict = {}
 for date,key in zip(dates, dict_keys):
     df = racing_bar_df[racing_bar_df['Date']==date] # get all data for selected date
