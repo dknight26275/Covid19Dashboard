@@ -22,8 +22,8 @@ app = dash.Dash(__name__,
 # --------------------------------------------------------------------------------------------------------------
 # %%
 # load data
-covid_cleaned_df = pd.read_csv('H:/Covid19Dashboard/covid_cleaned.csv')
-country_daily_df = pd.read_csv('H:/Covid19Dashboard/country_daily.csv')
+# covid_cleaned_df = pd.read_csv('H:/Covid19Dashboard/covid_cleaned.csv')
+# country_daily_df = pd.read_csv('H:/Covid19Dashboard/country_daily.csv')
 country_latest_df = pd.read_csv('H:/Covid19Dashboard/country_latest.csv')
 daily_total_df = pd.read_csv('H:/Covid19Dashboard/daily_total.csv')
 
@@ -44,25 +44,21 @@ global_df_weekly = global_bar_df.groupby(by=[pd.Grouper(key='Date', axis=0, freq
 ).reset_index()  # flatten multi-index for px
 
 
-# sort, filter and group the country_daily_df for selected country bar charts and choropleth chart
-country_bar_df = country_daily_df.copy()
-country_bar_df = country_bar_df.rename(columns={'Confirmed': 'Cumulative cases', 'Deaths': 'Total Deaths'})
-# convert date colum to datetime format
-country_bar_df['Date'] = pd.to_datetime(country_bar_df['Date'], infer_datetime_format=True)
-# sort by Date
-country_bar_df = country_bar_df.sort_values('Date', ignore_index=True)
-# group data by week
-country_df_weekly = country_bar_df.groupby(by=[pd.Grouper(key='Date', axis=0, freq='W'),'Country_Region']) \
-    [['Date', 'Country_Region','Cumulative cases', 'Total Deaths', 'New_cases', 'New_deaths', 'iso3','Lat','Long']].agg(
-    {'Cumulative cases': 'max',  # No of confirmed cases at the end of the week
-     'Total Deaths': 'max',  # No of deaths  at the end of the week
-     'New_cases': 'sum',  # number of new cases each day throughout the week
-     'New_deaths': 'sum',  # number of new deaths each day throughout the week
-     'iso3': 'last',  # iso3 for choropleth maps
-     'Lat': 'last',  # Lat for maps
-     'Long': 'last',  # Long for maps
-     }
-).reset_index()  # flatten multi-index for px
+# sort, filter and group the country_latest_df for selected country bar charts and choropleth chart
+country_bar_df = country_latest_df.copy()
+country_bar_df = country_bar_df.rename(columns={
+    'Country_Region':'Country',
+    'Confirmed': 'Confirmed cases',
+    'Deaths_per_100': 'Fatality rate (%)',
+    'Cases_per_million': 'Cases/million population',
+    'New_cases_last_week': '7 day cases',
+    'New_deaths_last_week':  '7 day deaths',
+    'New_cases_last_month': '28 day cases',
+    'New_deaths_last_month': '28 day deaths'
+})
+
+country_bar_df = country_bar_df[['Country','Confirmed cases','Deaths', 'Fatality rate (%)',
+                                'Cases/million population','28 day cases','28 day deaths','7 day cases','7 day deaths']]
 
 
 # initialise variables
@@ -99,10 +95,18 @@ global_data_card = dbc.Card(
                         dbc.ListGroupItem("Total COVID 19 related deaths: {:,}".format(global_total_deaths)),
                         dbc.ListGroupItem("COVID 19 cases per million people: {:,}".format(cases_per_million)),
                         dbc.ListGroupItem("COVID 19 deaths/100 cases: {:.2f}".format(deaths_per_100)),
-                        dbc.ListGroupItem("Confirmed cases in the last month: {:,} ({:+.2f}%)".format(cases_last_month,cases_one_month_change_pc)),
-                        dbc.ListGroupItem("COVID 19 deaths in the last month: {:,} ({:+.2f}%)".format(deaths_last_month,deaths_one_month_change_pc)),
-                        dbc.ListGroupItem("Confirmed cases in the last week: {:,} ({:+.2f}%)".format(cases_last_week, cases_one_week_change_pc)),
-                        dbc.ListGroupItem("COVID 19 deaths in the last week: {:,} ({:+.2f}%)".format(deaths_last_week,deaths_one_week_change_pc)),
+                        dbc.ListGroupItem(
+                            "Confirmed cases in the last month: {:,} ({:+.2f}%)".format(
+                                cases_last_month,cases_one_month_change_pc)),
+                        dbc.ListGroupItem(
+                            "COVID 19 deaths in the last month: {:,} ({:+.2f}%)".format(
+                                deaths_last_month,deaths_one_month_change_pc)),
+                        dbc.ListGroupItem(
+                            "Confirmed cases in the last week: {:,} ({:+.2f}%)".format(
+                                cases_last_week, cases_one_week_change_pc)),
+                        dbc.ListGroupItem(
+                            "COVID 19 deaths in the last week: {:,} ({:+.2f}%)".format(
+                                deaths_last_week,deaths_one_week_change_pc)),
                     ]
             )
         ]
@@ -200,24 +204,68 @@ app.layout = dbc.Container(
                 dbc.Row(
                     children=[
                         dbc.Col(
-                            id='data_table',
-                            children=[
-                                dash_table.DataTable()
-                            ],
-                            width=6,
-                            style={'background-color':'grey'}
-                        ),
-                        dbc.Col(
                             id='map_container',
                             children=[
-                                html.H5('Choropleth map'),
                                 dcc.Graph(id='choropleth_map', figure={}),
                             ],
-                            width={'size': 6},
-                            style={'height': '100%',},
+                            width={'size': 8},
+                            style={'height': '100%', },
                         ),
+                        dbc.Col(
+                            id='Selected_data_container',
+                            children=[
+                                dcc.Graph(id='datatable_graph', figure={})
+                            ],
+                            width=4,
+                        )
                     ]
-                )
+
+                ),
+                dbc.Row(
+                    children=[
+                        dbc.Col(
+                            id='datatable_container',
+                            children=[
+                                dash_table.DataTable(
+                                    id='interactive_datable',
+                                    columns=[
+                                        {'name':i,'id':i, 'deletable':False,'selectable':True,'hideable':False}
+                                        for i in country_bar_df.columns
+                                    ],
+                                    data=country_bar_df.to_dict('records'),
+                                    editable=False,
+                                    filter_action='native',
+                                    sort_action='native',
+                                    sort_mode='single',
+                                    column_selectable='single',
+                                    row_selectable='multi',
+                                    row_deletable=False,
+                                    selected_columns=[],
+                                    selected_rows=[],
+                                    page_action='native',
+                                    page_current=0,
+                                    page_size=10,
+                                    style_cell={
+                                        'minWidth':175, #'maxWidth':200, 'width':95
+                                    },
+                                    style_data={
+                                        'whiteSpace':'normal', 'height': 'auto'
+                                    },
+                                    style_cell_conditional=[
+                                        {
+                                            'if': {'column_id':c},
+                                            'textAlign':'left'
+                                        }
+                                        for c in ['Country']
+                                    ]
+                                )
+                            ],
+                            width=10,
+                            # style={'background-color':'grey'}
+                        ),
+
+                    ]
+                ),
             ],
 
         ),
@@ -225,113 +273,6 @@ app.layout = dbc.Container(
     id='root',
     style={'max-width':'100vw', 'max-height':'100vh'}
 )
-
-#%%
-# %%
-# demo layout with rows of different heights
-# https://github.com/facultyai/dash-bootstrap-components/issues/286
-# app.layout = dbc.Container(
-#     id='root',
-#     children=[
-#         html.Div(
-#             id='container',
-#             children=[
-#                 dbc.Row(
-#                     [
-#                         dbc.Col(
-#                             [
-#                                 dbc.Row(  # white bg
-#                                     [
-#                                         dbc.Col(
-#                                             [
-#                                                 dbc.Row(
-#                                                     id='country_select',
-#                                                     children=[
-#                                                          dcc.Dropdown(
-#                                                             id='country_dropdown',
-#                                                             options=[{'label':x,'value':x} for x in country_latest_df.Country_Region.unique()],
-#                                                             placeholder='Select a country'
-#                                                         ),
-#                                                         dcc.Dropdown(
-#                                                             id='graph-selector',
-#                                                             options=[
-#                                                                 {'label': 'Cumulative cases', 'value':'Cumulative cases'},
-#                                                                 {'label': 'Weekly cases', 'value':'New_cases'},
-#                                                                 {'label': 'Cumulative deaths', 'value':'Total Deaths'},
-#                                                                 {'label': 'Weekly deaths', 'value':'New_deaths'}
-#                                                             ],
-#                                                             placeholder='Select a graph'
-#                                                         ),
-#                                                     ],
-#                                                     style={'height': '50%',}
-#                                                 ),
-#                                                 dbc.Row(
-#                                                     id='country_charts',
-#                                                     children=[
-#                                                         html.H5('Selected Country charts'),
-#
-#                                                         dcc.Graph(id='selected_country_barcharts', figure={}),
-#                                                     ],
-#                                                     style={'height': '50%',},
-#                                                 )
-#                                             ],
-#                                             width={'size': 3},
-#                                             style={'height': '100%',},
-#                                         ),
-
-
-#                                     ],
-#                                     style={'height': '66%',}
-#                                 ),
-#                                 dbc.Row(
-#                                     [
-#                                         dbc.Col(
-#                                             id='selected_country_stats',
-#                                             children=[ #maybe make this a table?
-#                                                 html.H5("Selected country stats"),
-#                                                 dash_table.DataTable(
-#                                                     data=[
-#                                                         {'name': '', 'id': 'Values'},
-#                                                         {'name':'Total COVID19 cases','id':5555555},
-#                                                         {'name':'Total COVID19 deaths','id':4444444},
-#                                                         {'name':'COVID19 cases last month','id':333333333},
-#                                                         {'name': 'COVID19 deaths last month', 'id': 222222222},
-#                                                         {'name': 'COVID19 cases last week', 'id': 111111111},
-#                                                         {'name': 'COVID19 deaths last week', 'id': 00000000},
-#                                                     ],
-#                                                     id='Data_table',
-#                                                 )
-#                                                 # html.H6("Total COVID 19 cases:  ###"),
-#                                                 # html.H6("Total COVID 19 related deaths: ###?"),
-#                                                 # html.H6("COVID 19 cases in the last month:  ###"),
-#                                                 # html.H6("COVID 19 related deaths in the last month: ###?"),
-#                                                 # html.H6("COVID 19 cases in the last week:  ###"),
-#                                                 # html.H6("COVID 19 related deaths in the last week: ###?"),
-#                                             ],
-#                                             width=3,
-#                                             style={"height": "100%",},
-#                                         ),
-
-
-
-#                                     ],
-#                                     style={'height': '34%',}
-#                                 ),
-#                             ]
-#                         )
-#                     ],
-#                     style={'height': '90%',}
-#                 ),
-#             ],
-#             style={'height': '100vh', 'width': '95vw', 'background-color':'green'}
-#         )
-#     ],
-#     style={"height": "100vh", 'width':'100vw'},
-# )
-# '''
-# Maybe use cards for the country and global stats..., either that or some css to style the bottom columns
-# '''
-# --------------------------------------------------------------------------------------------------------------
 
 
 #%%
@@ -393,16 +334,27 @@ def update_deaths_barchart(selected_barchart):
 
     return deaths_barchart
 
-# # selected country barchart
+# selected country barchart
 # @app.callback(
-#     Output(component_id='selected_country_barcharts',component_property='figure'),
-#     [Input(component_id='country_dropdown', component_property='value'),
-#      Input(component_id='graph-selector',component_property='value')],
+#     Output(component_id='datatable_graph',component_property='figure'),
+#     [Input(component_id='interactive_datable', component_property='derived_virtual_data'),
+#      Input(component_id='interactive_datable',component_property='derived_virtual_selected_rows')],
 # )
-# def update_selected_barchart(country,graph):
-#     print(country, graph)
+# def update_selected_barchart(all_rows_data,slctd_rows_indices):
+#     print('Data across all pages pre or post filtering: {}'.format(all_rows_data))
+#     print('---------------------')
+#     print('Indices of selected rows if part of table after filtering: {}'.format(slctd_rows_indices))
 #
-#     dff_weekly = country_df_weekly[country_df_weekly['Country_Region'] == country]
+#     dff = pd.DataFrame(all_rows_data)
+#
+#     # used to highlight selected countries in barchart
+#     colors = ['#7FDBFF' if i in slctd_rows_indices else '#0074D9' for i in range(len(dff))]
+#
+#     figure = px.bar(data_frame=dff,
+#                         x='Country',
+#                         y='Confirmed cases')
+#
+#     return figure
 #
 #     selected_barchart = px.bar(dff_weekly
 #                                , x='Date'
@@ -433,9 +385,56 @@ def update_deaths_barchart(selected_barchart):
 #
 #     return selected_barchart
 
-# @app.callback(
-#     Output(component_id='choropleth_map', component_property='figure')
-# )
+@app.callback(
+    Output(component_id='choropleth_map',component_property='figure'),
+    [Input(component_id='interactive_datable', component_property='derived_virtual_data'),
+     Input(component_id='interactive_datable',component_property='derived_virtual_selected_rows'),
+     Input(component_id='interactive_datable',component_property='selected_columns')],
+)
+def update_selected_barchart(all_rows_data,slctd_rows_indices,selected_columns):
+    print('Data across all pages pre or post filtering: {}'.format(all_rows_data))
+    print('---------------------')
+    print('Indices of selected rows if part of table after filtering: {}'.format(slctd_rows_indices))
+
+
+    dff = pd.DataFrame(all_rows_data)
+
+    borders= [5 if i in slctd_rows_indices else 1 for i in range(len(dff))]
+    if len(selected_columns)==0:
+        selected_column='Confirmed cases'
+    else:
+        selected_column=selected_columns[0]
+    figure = px.choropleth(
+            data_frame=dff,
+            locations='Country',
+            locationmode='country names',
+            color=selected_column,
+            template='simple_white',
+            hover_data=['Country', 'Confirmed cases','Deaths']
+        )
+    figure.update_traces(marker_line_width=borders)
+
+    return figure
+
+'''
+need to work on styling of graphs...
+'''
+
+@app.callback(
+    Output('interactive_datable','style_data_conditional'),
+    [Input('interactive_datable','selected_columns')]
+)
+
+def update_table_styles(selected_columns):
+    print('Selected columns: {}'.format(selected_columns))
+
+    return [
+        {
+            'if': {'column_id':i},
+            'background_color':'#D2F3FF'
+        }
+        for i in selected_columns
+    ]
 #%%
 # --------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
