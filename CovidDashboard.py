@@ -8,11 +8,13 @@ import plotly.io as pio
 import dash
 from dash import html, dcc, dash_table
 from dash.dependencies import Input, Output
+from dash.dash_table.Format import Format, Scheme
+from dash.dash_table import DataTable, FormatTemplate
 import dash_bootstrap_components as dbc
 
 
 app = dash.Dash(__name__,
-                external_stylesheets=[dbc.themes.SANDSTONE],
+                external_stylesheets=[dbc.themes.CYBORG],
                 # meta_tags=[
                 #     {"name": "viewport", "content": "width=device-width, initial-scale=1.0"}
                 # ],
@@ -44,22 +46,11 @@ global_df_weekly = global_bar_df.groupby(by=[pd.Grouper(key='Date', axis=0, freq
 ).reset_index()  # flatten multi-index for px
 
 
-# sort, filter and group the country_latest_df for selected country bar charts and choropleth chart
 country_bar_df = country_latest_df.copy()
-country_bar_df = country_bar_df.rename(columns={
-    'Country_Region':'Country',
-    'Confirmed': 'Confirmed cases',
-    'Deaths_per_100': 'Fatality rate (%)',
-    'Cases_per_million': 'Cases/million population',
-    'New_cases_last_week': '7 day cases',
-    'New_deaths_last_week':  '7 day deaths',
-    'New_cases_last_month': '28 day cases',
-    'New_deaths_last_month': '28 day deaths'
-})
-
-country_bar_df = country_bar_df[['Country','Confirmed cases','Deaths', 'Fatality rate (%)',
-                                'Cases/million population','28 day cases','28 day deaths','7 day cases','7 day deaths']]
-
+# set datatable number formating
+# numeric = Format().group(True)
+# percentage = FormatTemplate.percentage(2)
+# numeric_decimal = Format(group=Group.yes).groups([3, 2])
 
 # initialise variables
 global_total_cases = int(country_latest_df['Confirmed'].sum())
@@ -81,7 +72,7 @@ last_update = datetime(int(dateparts[0]),int(dateparts[1]),int(dateparts[2]))
 last_update = last_update.strftime('%B %d %Y')
 
 dths = '#A32323' # colour for styling deaths
-conf = '#115806' # colour for styling confirmed cases
+conf = '#4B9D3E' # colour for styling confirmed cases
 
 #Data Card
 global_data_card = dbc.Card(
@@ -107,11 +98,13 @@ global_data_card = dbc.Card(
                         dbc.ListGroupItem(
                             "COVID 19 deaths in the last week: {:,} ({:+.2f}%)".format(
                                 deaths_last_week,deaths_one_week_change_pc)),
-                    ]
+                    ],
+                    className='card-text'
             )
         ]
     ),
-    ]
+    ],
+    className='card text-white bg-secondary mb-3'
 )
 
 # --------------------------------------------------------------------------------------------------------------
@@ -126,20 +119,30 @@ app.layout = dbc.Container(
                     [
                         dbc.Col(
                             html.A(
-                                [html.H5('Data sourced from JHU CSSE', style={'text-align': 'center'})],
-                                href="https://github.com/CSSEGISandData/COVID-19"
+                                [html.H5('Data sourced from JHU CSSE', style={'text-align': 'center',
+                                                                              'color':'white',
+                                                                              'font-style':'italic'})],
+                                href="https://github.com/CSSEGISandData/COVID-19",
+                                className='nav-item'
                             ),
                             width=2,
                             style={"height": "100%"},
+                            className='nav-link'
                         ),
                         dbc.Col(
-                            html.H1('COVID19 Pandemic Dashboard', style={'text-align': 'center'}),
+                            html.H1('COVID19 Pandemic Dashboard', style={'text-align': 'center',
+                                                                         'color':'white',
+                                                                         'font-weight':'bold'}),
                             width=8,
-                            style={"height": "100%"},
+                            style={"height": "50%"},
+                            # className='nav-link active'
                         ),
                             dbc.Col(
-                            [html.H4('Last updated: ', style={'text-align': 'center'}),
-                            html.P('{}'.format(last_update), style={'text-align': 'center'})],
+                            [html.H4('Last updated: ', style={'text-align': 'center',
+                                                              'color':'white',
+                                                              'font-weight':'bold'}),
+                            html.P('{}'.format(last_update), style={'text-align': 'center',
+                                                                    'color':'white'},)],
                             width=2,
                             style={"height": "100%",},
                         )
@@ -147,7 +150,8 @@ app.layout = dbc.Container(
                     className=['h-100', 'w-100',]
                 ),
             ],
-            style={'height': '10%',}
+            style={'height': '10%',},
+            className='navbar navbar-expand-lg navbar-dark bg-primary'
         ),
         html.Div(
             id='data-container',
@@ -166,6 +170,10 @@ app.layout = dbc.Container(
                                         {'label': ' Weekly ', 'value': 'New_cases'}
                                     ],
                                     value='New_cases',
+                                    inputClassName='form-check-input',
+                                    labelStyle={
+                                        'padding':'10px'
+                                    }
                                 ),
                                 dcc.Graph(id='confirmed_cases_barchart', figure={}),
                             ],
@@ -184,6 +192,10 @@ app.layout = dbc.Container(
                                         {'label': ' Weekly ', 'value': 'New_deaths'}
                                     ],
                                     value='New_deaths',
+                                    inputClassName='form-check-input',
+                                    labelStyle={
+                                        'padding':'10px'
+                                    }
                                 ),
                                 dcc.Graph(id='deaths_barchart', figure={}),
                             ],
@@ -196,29 +208,10 @@ app.layout = dbc.Container(
                                 global_data_card,
                             ],
                             width=4,
+                            # className='card text-white bg-secondary mb-3'
                         )
                     ]
 
-
-                ),
-                dbc.Row(
-                    children=[
-                        dbc.Col(
-                            id='map_container',
-                            children=[
-                                dcc.Graph(id='choropleth_map', figure={}),
-                            ],
-                            width={'size': 8},
-                            style={'height': '100%', },
-                        ),
-                        dbc.Col(
-                            id='Selected_data_container',
-                            children=[
-                                dcc.Graph(id='datatable_graph', figure={})
-                            ],
-                            width=4,
-                        )
-                    ]
 
                 ),
                 dbc.Row(
@@ -229,8 +222,19 @@ app.layout = dbc.Container(
                                 dash_table.DataTable(
                                     id='interactive_datable',
                                     columns=[
-                                        {'name':i,'id':i, 'deletable':False,'selectable':True,'hideable':False}
-                                        for i in country_bar_df.columns
+                                        dict(name='Country',id='Country_Region', selectable=True, deletable=False, type='text',),
+                                        dict(name='Confirmed cases',id='Confirmed', selectable=True,
+                                             deletable=False, type='numeric',format=Format().group(True)),
+                                        dict(name='Deaths', id='Deaths', selectable=True,
+                                             deletable=False, type='numeric', format=Format().group(True)),
+                                        dict(name='Fatality rate',id='Deaths_per_100', selectable=True,
+                                             deletable=False, type='numeric',format=FormatTemplate.percentage(2)),
+                                        dict(name='Cases/1 million population', id='Cases_per_million', selectable=True,
+                                             deletable=False, type='numeric', format=Format(precision=2, scheme=Scheme.fixed)),
+                                        dict(name='28 day cases', id='New_cases_last_month', selectable=True,
+                                             deletable=False, type='numeric', format=Format().group(True)),
+                                        dict(name='28 day deaths', id='New_deaths_last_month', selectable=True,
+                                             deletable=False, type='numeric', format=Format().group(True)),
                                     ],
                                     data=country_bar_df.to_dict('records'),
                                     editable=False,
@@ -245,27 +249,64 @@ app.layout = dbc.Container(
                                     page_action='native',
                                     page_current=0,
                                     page_size=10,
-                                    style_cell={
-                                        'minWidth':175, #'maxWidth':200, 'width':95
-                                    },
-                                    style_data={
-                                        'whiteSpace':'normal', 'height': 'auto'
-                                    },
+                                    # style_data={
+                                    #     'whiteSpace': 'normal', 'height': 'auto'
+                                    # },
                                     style_cell_conditional=[
                                         {
-                                            'if': {'column_id':c},
-                                            'textAlign':'left'
+                                            'if': {'column_id': 'Country_Region'},
+                                            'textAlign': 'left'
+                                        },
+                                    ],
+                                    style_header={
+                                        'backgroundColor':'rgb(42,159,214)',
+                                        'color':'#fff'
+                                    },
+                                    style_cell={
+                                        'minWidth': 175,
+                                        # 'maxWidth':200, 'width':95
+                                    },
+                                    style_data={
+                                        'backgroundColor': '#adafae',
+                                        'color':'black',
+                                    },
+                                    style_data_conditional=[
+                                        {
+                                            'if': {'row_index': 4},
+                                            'backgroundColor': 'rgb(220, 220, 220)',
                                         }
-                                        for c in ['Country']
-                                    ]
-                                )
+                                    ],
+                                ),
+
                             ],
                             width=10,
-                            # style={'background-color':'grey'}
+                            # style={'background-color':'grey'},
+                            className='table table-hover'
                         ),
 
                     ]
                 ),
+                dbc.Row(
+                    children=[
+                        dbc.Col(
+                            id='map_container',
+                            children=[
+                                dcc.Graph(id='choropleth_map', figure={}),
+                            ],
+                            width={'size': 12},
+                            style={'height': '100%', },
+                        ),
+                        # dbc.Col(
+                        #     id='Selected_data_container',
+                        #     children=[
+                        #         dcc.Graph(id='datatable_graph', figure={})
+                        #     ],
+                        #     width=4,
+                        # )
+                    ]
+
+                ),
+
             ],
 
         ),
@@ -295,13 +336,17 @@ def update_cases_barchart(selected_barchart):
                             , barmode='relative'
                             # , title='Global COVID19 {}'.format(selected_barchart)
                             , hover_data=['Date', selected_barchart]
-                            , template='simple_white'
+                            , template='plotly_dark'
                             , labels={'Date': 'Date',
-                           selected_barchart: '{} per week'.format(selected_barchart)})
+                           selected_barchart: 'Covid19 cases'})
 
-    cases_barchart.update_layout(font={'family': 'arial', 'size': 12}, )
-    cases_barchart.update_yaxes(showgrid=False, tickfont={'family': 'arial', 'size': 12})
-    cases_barchart.update_xaxes(showgrid=False, tickfont={'family': 'arial', 'size': 12})
+    cases_barchart.update_layout({'font': {'family': 'arial', 'size': 12},
+                                  'plot_bgcolor':'rgba(0,0,0,0)',
+                                  'paper_bgcolor':'rgba(0,0,0,0)'
+                                  }
+                                 )
+    cases_barchart.update_yaxes(showgrid=False, tickfont={'family': 'arial', 'size': 12},linecolor='white')
+    cases_barchart.update_xaxes(showgrid=False, tickfont={'family': 'arial', 'size': 12},linecolor='white')
     cases_barchart.update_traces(marker_color=conf)
 
     return cases_barchart
@@ -322,68 +367,22 @@ def update_deaths_barchart(selected_barchart):
                              , barmode='relative'
                              # , title='Global COVID19 {}'.format(selected_barchart)
                              , hover_data=['Date', selected_barchart]
-                             , template='simple_white'
+                             , template='plotly_dark'
                              , labels={'Date': 'Date',
-                           selected_barchart: '{} per week'.format(selected_barchart)})
+                           selected_barchart: 'Deaths'})
 
-    deaths_barchart.update_layout(font={'family': 'arial', 'size': 12}, )
-    deaths_barchart.update_yaxes(showgrid=False, tickfont={'family': 'arial', 'size': 12})
-    deaths_barchart.update_xaxes(showgrid=False, tickfont={'family': 'arial', 'size': 12})
-    deaths_barchart.update_traces(marker_color=dths)
+    deaths_barchart.update_layout({'font': {'family': 'arial', 'size': 12},
+                                  'plot_bgcolor':'rgba(0,0,0,0)',
+                                  'paper_bgcolor':'rgba(0,0,0,0)'
+                                  }
+                                 )
+    deaths_barchart.update_yaxes(showgrid=False, tickfont={'family': 'arial', 'size': 12},linecolor='white')
+    deaths_barchart.update_xaxes(showgrid=False, tickfont={'family': 'arial', 'size': 12},linecolor='white')
+    deaths_barchart.update_traces(marker_color=dths,marker_line_color='rgba(0,0,0,0)', marker_line_width=0.05)
 
 
     return deaths_barchart
 
-# selected country barchart
-# @app.callback(
-#     Output(component_id='datatable_graph',component_property='figure'),
-#     [Input(component_id='interactive_datable', component_property='derived_virtual_data'),
-#      Input(component_id='interactive_datable',component_property='derived_virtual_selected_rows')],
-# )
-# def update_selected_barchart(all_rows_data,slctd_rows_indices):
-#     print('Data across all pages pre or post filtering: {}'.format(all_rows_data))
-#     print('---------------------')
-#     print('Indices of selected rows if part of table after filtering: {}'.format(slctd_rows_indices))
-#
-#     dff = pd.DataFrame(all_rows_data)
-#
-#     # used to highlight selected countries in barchart
-#     colors = ['#7FDBFF' if i in slctd_rows_indices else '#0074D9' for i in range(len(dff))]
-#
-#     figure = px.bar(data_frame=dff,
-#                         x='Country',
-#                         y='Confirmed cases')
-#
-#     return figure
-#
-#     selected_barchart = px.bar(dff_weekly
-#                                , x='Date'
-#                                , y=graph
-#                                , opacity=0.9
-#                                , orientation='v'
-#                                , barmode='relative'
-#                                # , title='Global COVID19 {}'.format(selected_barchart)
-#                                , hover_data=['Date', graph]
-#                                , template='simple_white'
-#                                , labels={'Date': 'Date',
-#                            graph: '{} per week'.format(graph)})
-#
-#     selected_barchart.update_layout(font={'family': 'arial', 'size': 12}, )
-#     selected_barchart.update_yaxes(showgrid=False, tickfont={'family': 'arial', 'size': 12})
-#     selected_barchart.update_xaxes(showgrid=False, tickfont={'family': 'arial', 'size': 12})
-#     if (graph == 'Cumulative cases') | (graph == 'New_cases'):
-#         selected_barchart.update_traces(marker_color=conf)
-#     else:
-#         selected_barchart.update_traces(marker_color=dths)
-#
-#     # total_cases = dff_weekly['Cumulative cases'].iloc[-1]
-#     # total_deaths = dff_weekly['Total Deaths'].iloc[-1]
-#     # cases_in_last_week = dff_weekly['Cumulative cases'].max() - dff_weekly['Cumulative cases'].iloc[-2]
-#     # deaths_in_last_week = dff_weekly['Total Deaths'].max() - dff_weekly['Total Deaths'].iloc[-2]
-#     # cases_in_last_month = dff_weekly['Cumulative cases'].max() - dff_weekly['Cumulative cases'].iloc[-4]
-#     # deaths_in_last_month = dff_weekly['Total Deaths'].max() - dff_weekly['Total Deaths'].iloc[-4]
-#
-#     return selected_barchart
 
 @app.callback(
     Output(component_id='choropleth_map',component_property='figure'),
@@ -401,19 +400,24 @@ def update_selected_barchart(all_rows_data,slctd_rows_indices,selected_columns):
 
     borders= [5 if i in slctd_rows_indices else 1 for i in range(len(dff))]
     if len(selected_columns)==0:
-        selected_column='Confirmed cases'
+        selected_column='Confirmed'
     else:
         selected_column=selected_columns[0]
     figure = px.choropleth(
             data_frame=dff,
-            locations='Country',
+            locations='Country_Region',
             locationmode='country names',
             color=selected_column,
-            template='simple_white',
-            hover_data=['Country', 'Confirmed cases','Deaths']
+            color_continuous_scale='jet',
+            template='plotly_dark',
+            hover_data=['Country_Region', 'Confirmed','Deaths']
         )
     figure.update_traces(marker_line_width=borders)
-
+    figure.update_layout({'font': {'family': 'arial', 'size': 12},
+                                  'plot_bgcolor':'rgba(0,0,0,0)',
+                                  'paper_bgcolor':'rgba(0,0,0,0)'
+                                  }
+                                 )
     return figure
 
 '''
