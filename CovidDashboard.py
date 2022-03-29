@@ -112,8 +112,6 @@ global_data_card = dbc.Card(
 )
 
 # --------------------------------------------------------------------------------------------------------------
-# App Layout
-# %%
 app.layout = dbc.Container(
     children=[
         html.Div(
@@ -308,6 +306,8 @@ app.layout = dbc.Container(
     id='root',
     style={'max-width': '100vw', 'max-height': '100vh'}
 )
+# App Layout
+# %%
 
 
 # %%
