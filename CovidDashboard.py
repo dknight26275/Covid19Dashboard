@@ -24,7 +24,7 @@ app = dash.Dash(__name__,
 # %%
 # load data
 # covid_cleaned_df = pd.read_csv('H:/Covid19Dashboard/covid_cleaned.csv')
-# country_daily_df = pd.read_csv('H:/Covid19Dashboard/country_daily.csv')
+country_daily_df = pd.read_csv('H:/Covid19Dashboard/country_daily.csv')
 country_latest_df = pd.read_csv('H:/Covid19Dashboard/country_latest.csv')
 daily_total_df = pd.read_csv('H:/Covid19Dashboard/daily_total.csv')
 
@@ -245,7 +245,7 @@ app.layout = dbc.Container(
                                     sort_action='native',
                                     sort_mode='single',
                                     column_selectable='single',
-                                    row_selectable='multi',
+                                    row_selectable='single',
                                     row_deletable=False,
                                     selected_columns=[],
                                     selected_rows=[],
@@ -317,12 +317,33 @@ app.layout = dbc.Container(
 # #confirmed cases barcharts
 @app.callback(
     Output(component_id='confirmed_cases_barchart', component_property='figure'),
-    [Input(component_id='weekly_vs_cumulative_cases_selector', component_property='value')]
+    [Input(component_id='weekly_vs_cumulative_cases_selector', component_property='value'),
+     Input(component_id='interactive_datable', component_property='derived_virtual_selected_rows')]
 )
-def update_cases_barchart(selected_barchart):
+def update_cases_barchart(selected_barchart, selected_rows):
     print(selected_barchart)
+    #get list of selected countries from datatable
+    if len(selected_rows) == 0: # len will == 0 if no countries selected
+        df = global_df_weekly
+    else:
+        # can't use global_df_weekly, it doesn't have country column, need to use country daily...
+        dff = country_daily_df.iloc[selected_rows[0],:]
 
-    cases_barchart = px.bar(global_df_weekly
+        # convert date colum to datetime format
+        dff['Date'] = pd.to_datetime(dff['Date'], infer_datetime_format=True)
+        # sort by Date
+        dff = dff.sort_values('Date', ignore_index=True)
+        # group data by week
+        df = dff.groupby(by=[pd.Grouper(key='Date', axis=0, freq='W')])[
+            ['Date', 'Confirmed', 'Deaths', 'New_cases', 'New_deaths']].agg({
+            'Confirmed': 'max',  # No of confirmed cases at the end of the week
+            'Deaths': 'max',  # No of deaths  at the end of the week
+            'New_cases': 'sum',  # number of new cases each day throughout the week
+            'New_deaths': 'sum'}  # number of new deaths each day throughout the week
+        ).reset_index()  # flatten multi-index for px
+
+
+    cases_barchart = px.bar(df
                             , x='Date'
                             , y=selected_barchart
                             , opacity=0.9
@@ -377,7 +398,7 @@ def update_deaths_barchart(selected_barchart):
 
     return deaths_barchart
 
-
+# datatable and choropleth map
 @app.callback(
     Output(component_id='choropleth_map', component_property='figure'),
     [Input(component_id='interactive_datable', component_property='derived_virtual_data'),
@@ -388,6 +409,10 @@ def update_choropleth(all_rows_data, slctd_rows_indices, selected_columns):
     print('Data across all pages pre or post filtering: {}'.format(all_rows_data))
     print('---------------------')
     print('Indices of selected rows if part of table after filtering: {}'.format(slctd_rows_indices))
+    if len(slctd_rows_indices) > 0:
+      for i in slctd_rows_indices:
+          print('selected country after filtering: {}'.format(all_rows_data[i]['Country']))
+    # print('selected country after filtering: {}'.format(all_rows_data[slctd_rows_indices[0]]['Country']))
     print('selected columns: {}'.format(selected_columns))
     dff = pd.DataFrame(all_rows_data)
 

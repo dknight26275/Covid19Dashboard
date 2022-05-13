@@ -41,6 +41,28 @@ print(f'country_latest: {country_latest_df.info()}')
 print(f'daily_total: {daily_total_df.info()}')
 
 #%%
+# # sort, filter and group the daily_total_df for global bar charts
+# global_bar_df = daily_total_df.copy()
+# # global_bar_df = global_bar_df.rename(columns={'Country_Region':'Country','Confirmed': 'Confirmed cases',
+# # 'Deaths_per_100':'Cases/1 million population','New_cases_last_month':'28 day cases', 'New_deaths_last_month':'28 day deaths',})
+# # convert date colum to datetime format
+# global_bar_df['Date'] = pd.to_datetime(global_bar_df['Date'], infer_datetime_format=True)
+# # sort by Date
+# global_bar_df = global_bar_df.sort_values('Date', ignore_index=True)
+# # group data by week
+# global_df_weekly = global_bar_df.groupby(by=[pd.Grouper(key='Date', axis=0, freq='W')])[
+#     ['Date', 'Confirmed', 'Deaths', 'New_cases', 'New_deaths']].agg({
+#     'Confirmed': 'max',  # No of confirmed cases at the end of the week
+#      'Deaths': 'max',  # No of deaths  at the end of the week
+#      'New_cases': 'sum',  # number of new cases each day throughout the week
+#      'New_deaths': 'sum'}  # number of new deaths each day throughout the week
+# ).reset_index()  # flatten multi-index for px
+# print(global_df_weekly.info())
+# selected_rows=[9]
+# df=global_df_weekly.iloc[9,:]
+# print(df)
+
+#%%
 # Maps cases and deaths (total, last week, last month, per 100000 population)
 
 #%%
