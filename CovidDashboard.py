@@ -21,18 +21,14 @@ app = dash.Dash(__name__,
 # other dash themes : https://bootswatch.com/
 
 # --------------------------------------------------------------------------------------------------------------
-# %%
+
 # load data
-# covid_cleaned_df = pd.read_csv('H:/Covid19Dashboard/covid_cleaned.csv')
-country_daily_df = pd.read_csv('H:/Covid19Dashboard/country_daily.csv')
-country_latest_df = pd.read_csv('H:/Covid19Dashboard/country_latest.csv')
-daily_total_df = pd.read_csv('H:/Covid19Dashboard/daily_total.csv')
+country_daily_df = pd.read_csv('https://github.com/dknight26275/Covid19Dashboard/raw/main/country_daily.csv')
+country_latest_df = pd.read_csv('https://github.com/dknight26275/Covid19Dashboard/raw/main/country_latest.csv')
+daily_total_df = pd.read_csv('https://github.com/dknight26275/Covid19Dashboard/raw/main/daily_total.csv')
 
 # sort, filter and group the daily_total_df for global bar charts
 global_bar_df = daily_total_df.copy()
-# global_bar_df = global_bar_df.rename(columns={'Country_Region':'Country','Confirmed': 'Confirmed cases',
-# 'Deaths_per_100':'Cases/1 million population','New_cases_last_month':'28 day cases', 'New_deaths_last_month':'28 day deaths',})
-# convert date colum to datetime format
 global_bar_df['Date'] = pd.to_datetime(global_bar_df['Date'], infer_datetime_format=True)
 # sort by Date
 global_bar_df = global_bar_df.sort_values('Date', ignore_index=True)
@@ -51,10 +47,7 @@ country_bar_df = country_bar_df.rename(columns={'Country_Region':'Country','Conf
                                                 'Cases_per_million':'Cases/1 million population',
                                                 'New_cases_last_month':'28 day cases',
                                                 'New_deaths_last_month':'28 day deaths',})
-# set datatable number formating
-# numeric = Format().group(True)
-# percentage = FormatTemplate.percentage(2)
-# numeric_decimal = Format(group=Group.yes).groups([3, 2])
+
 
 # initialise variables
 global_total_cases = int(country_latest_df['Confirmed'].sum())
@@ -110,8 +103,9 @@ global_data_card = dbc.Card(
     ],
     className='card text-white bg-secondary mb-3'
 )
-
 # --------------------------------------------------------------------------------------------------------------
+#APP Layout
+
 app.layout = dbc.Container(
     children=[
         html.Div(
@@ -306,11 +300,11 @@ app.layout = dbc.Container(
     id='root',
     style={'max-width': '100vw', 'max-height': '100vh'}
 )
-# App Layout
-# %%
 
 
-# %%
+
+
+# --------------------------------------------------------------------------------------------------------------
 #
 # # Connect the Plotly graphs with Dash Components
 #
@@ -321,7 +315,7 @@ app.layout = dbc.Container(
      Input(component_id='interactive_datable', component_property='derived_virtual_selected_rows')]
 )
 def update_cases_barchart(selected_barchart, selected_rows):
-    print(selected_barchart)
+    # print(selected_barchart)
     #get list of selected countries from datatable
     if len(selected_rows) == 0: # len will == 0 if no countries selected
         df = global_df_weekly
@@ -373,7 +367,7 @@ def update_cases_barchart(selected_barchart, selected_rows):
     [Input(component_id='weekly_vs_cumulative_deaths_selector', component_property='value')]
 )
 def update_deaths_barchart(selected_barchart):
-    print(selected_barchart)
+    # print(selected_barchart)
 
     deaths_barchart = px.bar(global_df_weekly
                              , x='Date'
@@ -406,14 +400,14 @@ def update_deaths_barchart(selected_barchart):
      Input(component_id='interactive_datable', component_property='selected_columns')],
 )
 def update_choropleth(all_rows_data, slctd_rows_indices, selected_columns):
-    print('Data across all pages pre or post filtering: {}'.format(all_rows_data))
-    print('---------------------')
-    print('Indices of selected rows if part of table after filtering: {}'.format(slctd_rows_indices))
-    if len(slctd_rows_indices) > 0:
-      for i in slctd_rows_indices:
-          print('selected country after filtering: {}'.format(all_rows_data[i]['Country']))
-    # print('selected country after filtering: {}'.format(all_rows_data[slctd_rows_indices[0]]['Country']))
-    print('selected columns: {}'.format(selected_columns))
+    # print('Data across all pages pre or post filtering: {}'.format(all_rows_data))
+    # print('---------------------')
+    # print('Indices of selected rows if part of table after filtering: {}'.format(slctd_rows_indices))
+    # if len(slctd_rows_indices) > 0:
+    #   for i in slctd_rows_indices:
+    #       print('selected country after filtering: {}'.format(all_rows_data[i]['Country']))
+    # # print('selected country after filtering: {}'.format(all_rows_data[slctd_rows_indices[0]]['Country']))
+    # print('selected columns: {}'.format(selected_columns))
     dff = pd.DataFrame(all_rows_data)
 
     border_width = [3 if i in slctd_rows_indices else 1 for i in range(len(dff))]
@@ -460,7 +454,7 @@ Add title (use label from datatable), remove title from legend (increase graphs 
     [Input('interactive_datable', 'selected_columns')]
 )
 def update_table_styles(selected_columns):
-    print('Selected columns: {}'.format(selected_columns))
+    # print('Selected columns: {}'.format(selected_columns))
 
     return [
         {
@@ -471,7 +465,7 @@ def update_table_styles(selected_columns):
     ]
 
 
-# %%
+
 # --------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
     app.run_server(debug=True)
